@@ -8,6 +8,7 @@
 #include "../src/catalog/catalog_match.h"
 #include "../src/core/library_scan.h"
 #include "../src/metadata/library_organize.h"
+#include "rom_paths.h"
 
 using namespace remustwo;
 
@@ -20,7 +21,7 @@ private slots:
         QVERIFY(dir.isValid());
         const QString romDir = dir.filePath(QStringLiteral("roms"));
         QVERIFY(QDir().mkpath(romDir));
-        const QString romSource = QStringLiteral(REMUSTWO_SOURCE_DIR) + QStringLiteral("/testdata/fixture.bin");
+        const QString romSource = test::syntheticFixtureRom();
         QVERIFY(QFile::copy(romSource, romDir + QStringLiteral("/fixture.bin")));
 
         const QString libraryPath = dir.filePath(QStringLiteral("library.db"));
@@ -49,8 +50,8 @@ private slots:
         const QString libraryPath = dir.filePath(QStringLiteral("library.db"));
         const QString dest = dir.filePath(QStringLiteral("out"));
         QVERIFY(QDir().mkpath(dest));
-        const QString datPath = QStringLiteral(REMUSTWO_SOURCE_DIR) + QStringLiteral("/testdata/fixture.dat");
-        const QString romSource = QStringLiteral(REMUSTWO_SOURCE_DIR) + QStringLiteral("/testdata/fixture.bin");
+        const QString datPath = test::syntheticFixtureDat();
+        const QString romSource = test::syntheticFixtureRom();
         const QString romDir = dir.filePath(QStringLiteral("roms"));
         QVERIFY(QDir().mkpath(romDir));
         QVERIFY(QFile::copy(romSource, romDir + QStringLiteral("/fixture.bin")));

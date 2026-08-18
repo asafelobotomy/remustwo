@@ -8,3 +8,7 @@ cmake-build-*/
 .cache/
 .vscode/
 .idea/
+
+# Local copyrighted dumps — never commit. testdata/ is synthetic vectors only.
+/testroms/*
+!/testroms/README.md

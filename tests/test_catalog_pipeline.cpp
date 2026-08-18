@@ -6,6 +6,7 @@
 #include "../src/catalog/catalog_ingest.h"
 #include "../src/catalog/catalog_match.h"
 #include "../src/core/database.h"
+#include "rom_paths.h"
 
 using namespace remustwo;
 
@@ -17,8 +18,8 @@ private slots:
         QTemporaryDir dir;
         QVERIFY(dir.isValid());
         const QString dbPath = dir.filePath(QStringLiteral("catalog.db"));
-        const QString datPath = QStringLiteral(REMUSTWO_SOURCE_DIR) + QStringLiteral("/testdata/fixture.dat");
-        const QString romSource = QStringLiteral(REMUSTWO_SOURCE_DIR) + QStringLiteral("/testdata/fixture.bin");
+        const QString datPath = test::syntheticFixtureDat();
+        const QString romSource = test::syntheticFixtureRom();
         const QString romPath = dir.filePath(QStringLiteral("fixture.bin"));
         QVERIFY(QFile::copy(romSource, romPath));
         QVERIFY(catalog::init(dbPath));

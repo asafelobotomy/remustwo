@@ -18,6 +18,18 @@ jobs:
             build-essential cmake ninja-build clang-format \
             qt6-base-dev libqt6sql6-sqlite zlib1g-dev libarchive-dev qt6-declarative-dev
 
+      - name: Refuse copyrighted dumps in git
+        run: |
+          set -euo pipefail
+          if git ls-files -- 'testroms' | grep -vE 'testroms/README.md$'; then
+            echo "testroms/ must not contain tracked dumps" >&2
+            exit 1
+          fi
+          if find testdata -type f -size +64k | grep .; then
+            echo "testdata/ must stay tiny synthetic vectors" >&2
+            exit 1
+          fi
+
       - name: clang-format
         run: find src tests -name '*.cpp' -o -name '*.h' | xargs clang-format --dry-run --Werror
 
@@ -37,6 +49,14 @@ jobs:
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+
+      - name: Refuse copyrighted dumps in git
+        run: |
+          set -euo pipefail
+          if git ls-files -- 'testroms' | grep -vE 'testroms/README.md$'; then
+            echo "testroms/ must not contain tracked dumps" >&2
+            exit 1
+          fi
 
       - name: Install dependencies
         run: |

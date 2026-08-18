@@ -48,7 +48,7 @@ Optional after match: `enrich --dry-run` (matched games only; `--online` for liv
 
 `--db` and `--catalog-db` are the same catalog path. `--library-db` is always the library.
 
-Real use: download No-Intro/Redump DATs for your systems, then `catalog ingest` each one before scan/match.
+Real use: download No-Intro/Redump DATs for your systems, then `catalog ingest` each one before scan/match. Put local dumps in `testroms/` (gitignored). Never commit game files; `testdata/fixture.bin` is a 276-byte synthetic vector for CI.
 
 Build with libarchive for archive extraction and zip bundles: `-DREMUSTWO_ENABLE_LIBARCHIVE=ON` (requires `libarchive-dev`). GUI: `-DREMUSTWO_BUILD_GUI=ON` (requires `qt6-declarative-dev`).
 

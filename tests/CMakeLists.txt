@@ -155,6 +155,11 @@ add_remustwo_test(test_library_scan LibraryScanTest
     LIBS Qt6::Test Qt6::Sql remustwo-metadata remustwo-catalog remustwo-core
 )
 
+add_remustwo_test(test_local_testroms LocalTestRomsTest
+    SOURCES test_local_testroms.cpp
+    LIBS Qt6::Test remustwo-core
+)
+
 add_remustwo_test(test_rom_bundler RomBundlerTest
     SOURCES test_rom_bundler.cpp
     LIBS Qt6::Test Qt6::Sql remustwo-catalog remustwo-core
