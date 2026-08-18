@@ -1,0 +1,12 @@
+{
+  "migrations": [
+    "0001_phase1_canonical_schema.sql",
+    "0003_systems_libretro_name.sql",
+    "0007_disc_sets.sql",
+    "0008_game_facts_lookup_index.sql",
+    "0009_game_signatures_source_entry_key.sql",
+    "0010_game_extended_metadata.sql",
+    "0013_disc_tracks_per_set_unique.sql",
+    "0014_patch_catalog.sql"
+  ]
+}

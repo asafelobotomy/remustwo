@@ -1,0 +1,78 @@
+#pragma once
+
+#include "disc_converter.h"
+#include <QString>
+#include <QStringList>
+
+namespace remustwo {
+
+enum class CHDCodec { LZMA, ZLIB, FLAC, Huffman, Auto };
+
+/**
+ * @brief Information about a CHD file
+ */
+struct CHDInfo {
+    QString path;
+    int version = 0;
+    QString compression;
+    qint64 logicalSize = 0;
+    qint64 physicalSize = 0;
+    /// MAME/header SHA1 from `chdman info` (combined raw+meta). Hasheous + MAME Redump index key.
+    QString sha1;
+    /// Uncompressed payload SHA1 from `chdman info` ("Data SHA1"). Verification only — not for bridges.
+    QString dataSha1;
+    QString parentSha1;
+    int diskType = 0;
+
+    /// SHA1 to send to Hasheous / MAME Redump DAT matching (header index, not Data SHA1).
+    QString hasheousDiscSha1() const {
+        return sha1.trimmed().toLower();
+    }
+};
+
+/**
+ * @brief Wrapper for chdman tool to convert disc images to CHD format
+ *
+ * CHD (Compressed Hunks of Data) is a lossless compression format that
+ * provides 30-60% space savings for disc-based games while maintaining
+ * full compatibility with RetroArch and most emulators.
+ *
+ * Requires chdman to be installed (part of MAME tools):
+ * - Linux: `sudo apt install mame-tools` or `sudo pacman -S mame-tools`
+ * - macOS: `brew install mame`
+ * - Windows: Download from MAME releases
+ */
+class CHDConverter : public DiscConverter {
+    Q_OBJECT
+
+public:
+    explicit CHDConverter(QObject *parent = nullptr);
+    ~CHDConverter() override = default;
+
+    bool isChdmanAvailable() const;
+    QString getChdmanVersion() const;
+    void setChdmanPath(const QString &path);
+    void setNumProcessors(int numProcessors);
+    void setCodec(CHDCodec codec);
+
+    ConversionResult convertCueToCHD(const QString &cuePath, const QString &outputPath = QString());
+    ConversionResult convertIsoToCHD(const QString &isoPath, const QString &outputPath = QString());
+    ConversionResult convertGdiToCHD(const QString &gdiPath, const QString &outputPath = QString());
+    ConversionResult extractCHDToCue(const QString &chdPath, const QString &outputPath = QString());
+
+    VerifyResult verifyCHD(const QString &chdPath);
+    CHDInfo getCHDInfo(const QString &chdPath);
+
+    QList<ConversionResult> batchConvert(const QStringList &inputPaths, const QString &outputDir = QString());
+
+private:
+    ConversionResult runChdman(const QStringList &args, const QString &inputPath, const QString &outputPath);
+    QStringList buildCreateCdArgs(const QString &inputPath, const QString &outputPath);
+    QString getCodecString() const;
+
+    QString m_chdmanPath;
+    int m_numProcessors = 0;
+    CHDCodec m_codec = CHDCodec::Auto;
+};
+
+} // namespace remustwo

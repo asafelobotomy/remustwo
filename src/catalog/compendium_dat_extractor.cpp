@@ -1,0 +1,289 @@
+#include "compendium_dat_extractor.h"
+
+#include "../core/dat_parser.h"
+#include "../core/disc_title_parser.h"
+
+#include <QFile>
+#include <QFileInfo>
+#include <QJsonDocument>
+#include <QJsonObject>
+#include <QMap>
+
+namespace remustwo {
+namespace Compendium {
+
+    // ── Helpers ───────────────────────────────────────────────────────────────────
+
+    QString DatExtractor::normalizeHash(const QString &raw) {
+        return raw.trimmed().toUpper().remove(QLatin1Char(' '));
+    }
+
+    QString DatExtractor::normalizeSerial(const QString &raw) {
+        return raw.trimmed().toUpper();
+    }
+
+    // Returns true for file extensions that are metadata-only tracks (.cue, .m3u,
+    // etc.) — these should not be ingested as hash identity rows.
+    static bool isMetaTrack(const QString &romName) {
+        static const QStringList kMetaExtensions = {
+            QStringLiteral(".cue"),
+            QStringLiteral(".m3u"),
+            QStringLiteral(".gdi"),
+            QStringLiteral(".toc"),
+            QStringLiteral(".sbi"),
+            QStringLiteral(".sub"),
+            QStringLiteral(".ccd"),
+            QStringLiteral(".mds"),
+        };
+        const QString lower = romName.toLower();
+        for (const QString &ext : kMetaExtensions) {
+            if (lower.endsWith(ext))
+                return true;
+        }
+        return false;
+    }
+
+    static SourceRecordEnvelope envelopeFromEntry(const QString &sourceId, const QString &snapshotId,
+        const QString &systemHint, const ClrMameProEntry &entry, const DatGameBlock &block, int trackIndex) {
+        SourceRecordEnvelope rec;
+
+        rec.sourceId = sourceId;
+        rec.snapshotId = snapshotId;
+        rec.externalKey = DatExtractor::makeExternalKey(systemHint, entry);
+
+        rec.systemHint = systemHint;
+        rec.titleRaw = entry.gameName;
+        rec.regionRaw = entry.region;
+
+        rec.datGameBlockName = block.gameName;
+        rec.datRomName = entry.romName;
+        rec.trackIndex = trackIndex;
+        rec.parsedDiscNumber = block.titleInfo.discNumber;
+        rec.parsedDiscCount = block.titleInfo.discCount;
+        rec.parsedSetVariant = block.titleInfo.setVariant.isNull() ? QStringLiteral("") : block.titleInfo.setVariant;
+        rec.parsedSetRole = block.titleInfo.setRole.isEmpty() ? QStringLiteral("game") : block.titleInfo.setRole;
+
+        const QString lowerRom = entry.romName.toLower();
+        if ((lowerRom.endsWith(QStringLiteral(".chd")) || lowerRom.endsWith(QStringLiteral(".rvz")))
+            && entry.sha1.trimmed().size() == 40) {
+            rec.primaryContentSha1 = entry.sha1.trimmed().toLower();
+        }
+
+        rec.hashes.crc32 = DatExtractor::normalizeHash(entry.crc32);
+        rec.hashes.md5 = entry.md5.trimmed().toLower();
+        rec.hashes.sha1 = entry.sha1.trimmed().toLower();
+        rec.hashes.sha256 = entry.sha256.trimmed().toLower();
+
+        if (!entry.serial.isEmpty())
+            rec.serials.append(DatExtractor::normalizeSerial(entry.serial));
+
+        if (!entry.gameName.isEmpty())
+            rec.fields.insert(QStringLiteral("title"), entry.gameName);
+        if (!entry.region.isEmpty())
+            rec.fields.insert(QStringLiteral("region"), entry.region);
+        if (!entry.publisher.isEmpty())
+            rec.fields.insert(QStringLiteral("publisher"), entry.publisher);
+        if (!entry.developer.isEmpty())
+            rec.fields.insert(QStringLiteral("developer"), entry.developer);
+        if (entry.releaseYear > 0) {
+            rec.fields.insert(QStringLiteral("release_year"), QString::number(entry.releaseYear));
+            const int month = entry.releaseMonth > 0 ? entry.releaseMonth : 1;
+            const int day = entry.releaseDay > 0 ? entry.releaseDay : 1;
+            rec.fields.insert(QStringLiteral("release_date"),
+                QStringLiteral("%1-%2-%3")
+                    .arg(entry.releaseYear, 4, 10, QChar('0'))
+                    .arg(month, 2, 10, QChar('0'))
+                    .arg(day, 2, 10, QChar('0')));
+        }
+        if (entry.users > 0)
+            rec.fields.insert(QStringLiteral("players_max"), QString::number(entry.users));
+        if (!entry.description.isEmpty() && entry.description != entry.gameName && entry.description.length() >= 20)
+            rec.fields.insert(QStringLiteral("description"), entry.description);
+
+        rec.payloadJson = DatExtractor::entryToPayloadJson(systemHint, entry);
+        return rec;
+    }
+
+    // Given a list of entries that all share the same gameName (i.e., multiple
+    // rom-track entries from one game block), return every data-track ROM.
+    // Skips .cue/.m3u metadata entries; falls back to the first entry if none remain.
+    QList<ClrMameProEntry> DatExtractor::dataTracksForBlock(const QList<ClrMameProEntry> &group) {
+        if (group.size() <= 1)
+            return group;
+
+        QList<ClrMameProEntry> tracks;
+        tracks.reserve(group.size());
+        for (const ClrMameProEntry &e : group) {
+            if (!isMetaTrack(e.romName))
+                tracks.append(e);
+        }
+        if (tracks.isEmpty())
+            tracks.append(group.first());
+        return tracks;
+    }
+
+    QList<DatGameBlock> DatExtractor::groupGameBlocks(const QList<ClrMameProEntry> &entries) {
+        QMap<QString, QList<ClrMameProEntry>> groups;
+        for (const ClrMameProEntry &entry : entries)
+            groups[entry.gameName].append(entry);
+
+        QList<DatGameBlock> blocks;
+        blocks.reserve(groups.size());
+        for (auto it = groups.cbegin(), end = groups.cend(); it != end; ++it) {
+            DatGameBlock block;
+            block.gameName = it.key();
+            block.titleInfo = DiscTitleParser::parseTitle(block.gameName);
+            block.tracks = dataTracksForBlock(*it);
+            blocks.append(block);
+        }
+        return blocks;
+    }
+
+    static ClrMameProEntry datRomEntryToClrMame(const remustwo::DatRomEntry &src) {
+        ClrMameProEntry entry;
+        entry.gameName = src.gameName;
+        entry.description = src.description;
+        entry.romName = src.romName;
+        entry.size = src.size;
+        entry.crc32 = src.crc32.toUpper();
+        entry.md5 = src.md5.toLower();
+        entry.sha1 = src.sha1.toLower();
+        entry.sha256 = src.sha256.toLower();
+        entry.serial = src.serial;
+        return entry;
+    }
+
+    QString DatExtractor::makeExternalKey(const QString &systemHint, const ClrMameProEntry &entry) {
+        const QString key = systemHint + QLatin1Char('|') + entry.gameName + QLatin1Char('|') + entry.romName;
+        return key.left(512);
+    }
+
+    QString DatExtractor::entryToPayloadJson(const QString &systemHint, const ClrMameProEntry &entry) {
+        QJsonObject obj;
+        obj.insert(QStringLiteral("system_hint"), systemHint);
+        obj.insert(QStringLiteral("game_name"), entry.gameName);
+        obj.insert(QStringLiteral("description"), entry.description);
+        obj.insert(QStringLiteral("rom_name"), entry.romName);
+        obj.insert(QStringLiteral("region"), entry.region);
+        if (entry.size > 0) {
+            obj.insert(QStringLiteral("size"), static_cast<qint64>(entry.size));
+        }
+        if (!entry.crc32.isEmpty()) {
+            obj.insert(QStringLiteral("crc32"), entry.crc32);
+        }
+        if (!entry.md5.isEmpty()) {
+            obj.insert(QStringLiteral("md5"), entry.md5);
+        }
+        if (!entry.sha1.isEmpty()) {
+            obj.insert(QStringLiteral("sha1"), entry.sha1);
+        }
+        if (!entry.sha256.isEmpty()) {
+            obj.insert(QStringLiteral("sha256"), entry.sha256);
+        }
+        if (!entry.serial.isEmpty()) {
+            obj.insert(QStringLiteral("serial"), entry.serial);
+        }
+        if (!entry.publisher.isEmpty()) {
+            obj.insert(QStringLiteral("publisher"), entry.publisher);
+        }
+        if (!entry.developer.isEmpty()) {
+            obj.insert(QStringLiteral("developer"), entry.developer);
+        }
+        if (entry.releaseYear > 0) {
+            obj.insert(QStringLiteral("release_year"), entry.releaseYear);
+        }
+        if (entry.users > 0) {
+            obj.insert(QStringLiteral("users"), entry.users);
+        }
+        return QString::fromUtf8(QJsonDocument(obj).toJson(QJsonDocument::Compact));
+    }
+
+    // ── Main extraction ───────────────────────────────────────────────────────────
+
+    QList<SourceRecordEnvelope> DatExtractor::extract(
+        const QString &filePath, const QString &sourceId, const QString &snapshotId, QString &error) {
+        const QFileInfo info(filePath);
+        if (!info.exists() || !info.isFile()) {
+            error = QStringLiteral("DAT file not found: %1").arg(filePath);
+            return { };
+        }
+
+        // Parse header and all entries in one file pass
+        QMap<QString, QString> header;
+        QList<ClrMameProEntry> entries = ClrMameProParser::parseAll(filePath, header);
+        QString systemHint = header.value(QStringLiteral("name"), info.completeBaseName());
+
+        if (entries.isEmpty()) {
+            // XML fallback: try Logiqx XML format (used by Redump, No-Intro XML exports)
+            QFile peekFile(filePath);
+            bool isXml = false;
+            if (peekFile.open(QIODevice::ReadOnly | QIODevice::Text)) {
+                const QByteArray peek = peekFile.read(6);
+                peekFile.close();
+                isXml = peek.startsWith("<?xml") || peek.startsWith("<dataf");
+            }
+
+            if (isXml) {
+                remustwo::DatParser xmlParser;
+                const remustwo::DatParseResult xmlResult = xmlParser.parse(filePath);
+                if (!xmlResult.success || xmlResult.entries.isEmpty()) {
+                    error = QStringLiteral("DAT file produced no entries: %1").arg(filePath);
+                    return { };
+                }
+                if (!xmlResult.header.name.isEmpty())
+                    systemHint = xmlResult.header.name;
+                entries.reserve(xmlResult.entries.size());
+                for (const remustwo::DatRomEntry &re : xmlResult.entries)
+                    entries.append(datRomEntryToClrMame(re));
+            } else {
+                error = QStringLiteral("DAT file produced no entries: %1").arg(filePath);
+                return { };
+            }
+        }
+
+        // Group by gameName and emit one envelope per data track (Redump multi-track).
+        // Meta-only rows (.cue, .m3u, …) are skipped; each disc track keeps its hash.
+        const QList<DatGameBlock> blocks = groupGameBlocks(entries);
+
+        QMap<QString, int> inferredDiscCountByIdentity;
+        {
+            QMap<QString, int> maxDiscNumberByIdentity;
+            QMap<QString, int> explicitDiscCountByIdentity;
+            for (const DatGameBlock &block : blocks) {
+                const QString identityKey = block.titleInfo.identityBase;
+                maxDiscNumberByIdentity[identityKey]
+                    = qMax(maxDiscNumberByIdentity.value(identityKey, 0), block.titleInfo.discNumber);
+                if (block.titleInfo.discCount > 0) {
+                    explicitDiscCountByIdentity[identityKey]
+                        = qMax(explicitDiscCountByIdentity.value(identityKey, 0), block.titleInfo.discCount);
+                }
+            }
+            for (auto it = maxDiscNumberByIdentity.cbegin(), end = maxDiscNumberByIdentity.cend(); it != end; ++it) {
+                const int explicitCount = explicitDiscCountByIdentity.value(it.key(), 0);
+                int count = explicitCount > 0 ? explicitCount : it.value();
+                if (count <= 0)
+                    count = 1;
+                inferredDiscCountByIdentity.insert(it.key(), count);
+            }
+        }
+
+        QList<SourceRecordEnvelope> records;
+        for (const DatGameBlock &block : blocks) {
+            const int discCount = inferredDiscCountByIdentity.value(block.titleInfo.identityBase, 1);
+            DatGameBlock enriched = block;
+            if (enriched.titleInfo.discCount <= 0)
+                enriched.titleInfo.discCount = discCount;
+
+            records.reserve(records.size() + enriched.tracks.size());
+            int trackIndex = 0;
+            for (const ClrMameProEntry &entry : enriched.tracks) {
+                ++trackIndex;
+                records.append(envelopeFromEntry(sourceId, snapshotId, systemHint, entry, enriched, trackIndex));
+            }
+        }
+
+        return records;
+    }
+
+} // namespace Compendium
+} // namespace remustwo

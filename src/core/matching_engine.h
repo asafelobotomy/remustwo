@@ -1,0 +1,99 @@
+#pragma once
+
+#include "constants/confidence.h"
+#include <QObject>
+#include <QString>
+#include <QDateTime>
+
+namespace remustwo {
+
+/**
+ * @brief Match result with confidence scoring
+ *
+ * Represents a match between a file and game metadata,
+ * with confidence score based on matching method.
+ */
+struct Match {
+    int fileId = 0; // Foreign key to files table
+    int gameId = 0; // Foreign key to games table (if exists)
+
+    QString providerName; // Provider that found the match
+    QString providerId; // Provider-specific game ID
+
+    // Confidence scoring (0-100%)
+    int confidence = 0;
+    QString matchMethod; // Canonicalized via Constants::MatchMethods
+
+    // Match details
+    QString matchedHash; // Hash that matched (if hash-based)
+    QString matchedName; // Name that matched
+    float nameMatchScore = 0.0f; // Levenshtein distance score
+
+    // Metadata from provider
+    QString title;
+    QString system;
+    QString region;
+    QString description;
+
+    // Status
+    bool reviewed = false; // User has reviewed this match
+    bool userConfirmed = false; // User confirmed this is correct
+    QDateTime matchedAt;
+};
+
+/**
+ * @brief Matching engine for hash and name-based confidence scoring.
+ */
+class MatchingEngine : public QObject {
+    Q_OBJECT
+
+public:
+    explicit MatchingEngine(QObject *parent = nullptr);
+    ~MatchingEngine() override = default;
+
+    /**
+     * @brief Calculate confidence score based on matching method
+     * @param method Match method string, normalized via Constants::MatchMethods
+     * @param nameMatchScore For fuzzy matches, the similarity score (0.0-1.0)
+     * @return Confidence percentage (0-100)
+     */
+    static int calculateConfidence(const QString &method, float nameMatchScore = 0.0f);
+
+    /**
+     * @brief Calculate Levenshtein distance between two strings
+     * @param s1 First string
+     * @param s2 Second string
+     * @return Similarity score (0.0 = completely different, 1.0 = identical)
+     */
+    static float calculateNameSimilarity(const QString &s1, const QString &s2);
+
+    /**
+     * @brief Normalize a filename for matching
+     *
+     * Removes file extension, region tags, version tags, etc.
+     * "Super Mario Bros. (USA).nes" → "super mario bros"
+     *
+     * @param fileName Original filename
+     * @return Normalized filename for comparison
+     */
+    static QString normalizeFileName(const QString &fileName);
+
+    /**
+     * @brief Extract game title from No-Intro/Redump formatted filename
+     * @param fileName Formatted filename
+     * @return Game title (without region, version, etc.)
+     */
+    static QString extractGameTitle(const QString &fileName);
+
+    /**
+     * @brief Calculate Levenshtein distance (edit distance) between strings
+     * @param s1 First string
+     * @param s2 Second string
+     * @return Edit distance (lower = more similar)
+     */
+    static int levenshteinDistance(const QString &s1, const QString &s2);
+
+private:
+};
+
+} // namespace remustwo

@@ -1,0 +1,10 @@
+build/
+cmake-build-*/
+*.user
+*.autosave
+*.db
+*.db-wal
+*.db-shm
+.cache/
+.vscode/
+.idea/

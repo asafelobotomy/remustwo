@@ -1,0 +1,12 @@
+<?xml version="1.0"?>
+<datafile>
+  <header>
+    <name>Remustwo Test System</name>
+    <description>Synthetic fixture for CI</description>
+    <version>20260817</version>
+  </header>
+  <game name="Fixture Game (USA)">
+    <description>Synthetic test ROM for remustwo</description>
+    <rom name="fixture.bin" size="276" crc="8a27668c" md5="5c5efc5cad24167b91d06ed3dc6bf524" sha1="b5c6db56d69f455f4dfa8800d0ce4a7b7f183dd6"/>
+  </game>
+</datafile>

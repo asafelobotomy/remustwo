@@ -1,0 +1,56 @@
+cmake_minimum_required(VERSION 3.22)
+project(remustwo VERSION 0.4.0 LANGUAGES CXX)
+
+set(CMAKE_CXX_STANDARD 20)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
+set(CMAKE_AUTOMOC ON)
+
+include(CTest)
+
+option(REMUSTWO_ENABLE_CCACHE "Use ccache when available" ON)
+if(REMUSTWO_ENABLE_CCACHE)
+    find_program(CCACHE_PROGRAM ccache)
+    if(CCACHE_PROGRAM)
+        set(CMAKE_CXX_COMPILER_LAUNCHER "${CCACHE_PROGRAM}")
+    endif()
+endif()
+
+option(REMUSTWO_ENABLE_PCH "Enable precompiled headers" OFF)
+option(REMUSTWO_ENABLE_WARNINGS "Enable -Wall -Wextra" ON)
+if(REMUSTWO_ENABLE_WARNINGS)
+    if(CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang")
+        add_compile_options(-Wall -Wextra -Wpedantic -Wno-unused-parameter)
+    endif()
+endif()
+
+find_package(Vulkan QUIET)
+if(NOT Vulkan_FOUND)
+    set(CMAKE_DISABLE_FIND_PACKAGE_WrapVulkanHeaders TRUE)
+endif()
+
+find_package(Qt6 REQUIRED COMPONENTS Core Sql Concurrent Network)
+find_package(ZLIB REQUIRED)
+option(REMUSTWO_BUILD_GUI "Build Qt Quick GUI" OFF)
+if(REMUSTWO_BUILD_GUI)
+    find_package(Qt6 REQUIRED COMPONENTS Quick Qml Gui)
+endif()
+option(REMUSTWO_ENABLE_LIBARCHIVE "Enable libarchive for organize/verify" OFF)
+if(REMUSTWO_ENABLE_LIBARCHIVE)
+    find_package(LibArchive REQUIRED)
+endif()
+
+add_subdirectory(src/core)
+add_subdirectory(src/catalog)
+add_subdirectory(src/metadata)
+
+if(REMUSTWO_BUILD_GUI)
+    add_subdirectory(src/gui)
+endif()
+
+add_executable(remustwo src/cli/main.cpp src/cli/cli_common.cpp src/cli/cli_commands.cpp)
+target_link_libraries(remustwo PRIVATE Qt6::Core remustwo-core remustwo-catalog remustwo-metadata)
+
+if(BUILD_TESTING)
+    find_package(Qt6 REQUIRED COMPONENTS Test)
+    add_subdirectory(tests)
+endif()

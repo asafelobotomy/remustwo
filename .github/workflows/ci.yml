@@ -1,0 +1,62 @@
+name: CI
+
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+
+jobs:
+  build:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            build-essential cmake ninja-build clang-format \
+            qt6-base-dev libqt6sql6-sqlite zlib1g-dev libarchive-dev qt6-declarative-dev
+
+      - name: clang-format
+        run: find src tests -name '*.cpp' -o -name '*.h' | xargs clang-format --dry-run --Werror
+
+      - name: Configure
+        run: cmake -S . -B build -G Ninja -DREMUSTWO_ENABLE_WARNINGS=ON -DCMAKE_BUILD_TYPE=Debug -DREMUSTWO_ENABLE_LIBARCHIVE=ON -DREMUSTWO_BUILD_GUI=ON
+
+      - name: Build
+        run: cmake --build build
+
+      - name: Test
+        run: ctest --test-dir build --output-on-failure
+
+      - name: Smoke test
+        run: bash scripts/smoke.sh
+
+  sanitizer:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            build-essential cmake ninja-build clang-format \
+            qt6-base-dev libqt6sql6-sqlite zlib1g-dev libarchive-dev qt6-declarative-dev
+
+      - name: Configure ASan
+        run: |
+          cmake -S . -B build -G Ninja -DREMUSTWO_ENABLE_WARNINGS=ON \
+            -DREMUSTWO_ENABLE_LIBARCHIVE=ON \
+            -DCMAKE_BUILD_TYPE=Debug \
+            -DCMAKE_CXX_FLAGS="-fsanitize=address,undefined -fno-omit-frame-pointer" \
+            -DCMAKE_EXE_LINKER_FLAGS="-fsanitize=address,undefined"
+
+      - name: Build and test
+        run: |
+          cmake --build build
+          ctest --test-dir build --output-on-failure
+
+      - name: CLI help
+        run: ./build/remustwo --help
