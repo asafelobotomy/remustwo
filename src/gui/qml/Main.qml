@@ -30,7 +30,7 @@ ApplicationWindow {
         }
 
         Button {
-            text: "Refresh library count"
+            text: "Refresh library"
             onClicked: libraryModel.fileCount()
         }
 
@@ -52,6 +52,28 @@ ApplicationWindow {
             onClicked: {
                 const title = libraryModel.matchFile(matchPath.text)
                 statusLabel.text = title.length > 0 ? ("Match: " + title) : libraryModel.status
+            }
+        }
+
+        ListView {
+            Layout.fillWidth: true
+            Layout.fillHeight: true
+            clip: true
+            model: libraryModel
+            delegate: RowLayout {
+                width: ListView.view.width
+                spacing: 8
+                Image {
+                    width: 48
+                    height: 48
+                    fillMode: Image.PreserveAspectFit
+                    source: libraryModel.coverForRow(index, true)
+                    asynchronous: true
+                }
+                ColumnLayout {
+                    Label { text: title; font.bold: true }
+                    Label { text: path; wrapMode: Text.Wrap; Layout.fillWidth: true }
+                }
             }
         }
     }

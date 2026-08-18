@@ -84,7 +84,7 @@ Result<bool> updateGameCover(QSqlDatabase &database, const QString &hashType, co
 HasheousProvider::HasheousProvider(const QString &baseUrl)
     : m_baseUrl(baseUrl.isEmpty() ? QString::fromLatin1(Constants::API::HASHEOUS_BASE_URL) : baseUrl) { }
 
-GameMetadata HasheousProvider::lookupByHashes(const QString &crc32, const QString &md5, const QString &sha1) const {
+QByteArray HasheousProvider::lookupJson(const QString &crc32, const QString &md5, const QString &sha1) {
     QJsonArray payload;
     QJsonObject entry;
     if (!crc32.isEmpty())
@@ -95,11 +95,19 @@ GameMetadata HasheousProvider::lookupByHashes(const QString &crc32, const QStrin
         entry.insert(QStringLiteral("shA1"), normalizedHash(sha1));
     if (entry.isEmpty())
         return { };
+    payload.append(entry);
+    return QJsonDocument(payload).toJson(QJsonDocument::Compact);
+}
+
+GameMetadata HasheousProvider::lookupByHashes(const QString &crc32, const QString &md5, const QString &sha1) const {
+    const QByteArray payload = lookupJson(crc32, md5, sha1);
+    if (payload.isEmpty())
+        return { };
 
     const QUrl url(m_baseUrl + QString::fromLatin1(Constants::API::HASHEOUS_LOOKUP_ENDPOINT));
     HttpClient client;
-    const HttpResponse response = client.postJson(
-        url, QJsonDocument(payload).toJson(QJsonDocument::Compact), Constants::Network::HASHEOUS_TIMEOUT_MS);
+    const HttpResponse response
+        = client.postJson(url, payload, Constants::Network::HASHEOUS_TIMEOUT_MS);
     if (!response.error.isEmpty() || response.body.isEmpty())
         return { };
 
@@ -171,65 +179,6 @@ Result<int> importHasheousJson(const QString &catalogDbPath, const QString &json
             if (*result)
                 ++updated;
         }
-    }
-
-    database.close();
-    QSqlDatabase::removeDatabase(database.connectionName());
-    return Result<int>::ok(updated);
-}
-
-Result<int> enrichCatalogFromHasheous(const QString &catalogDbPath, bool online) {
-    if (!online) {
-        return Result<int>::fail(
-            QStringLiteral("Offline enrich requires import-hasheous JSON; use --online for live lookup"));
-    }
-
-    auto dbResult = catalog::open(catalogDbPath, QStringLiteral("hasheous_enrich"));
-    if (!dbResult) {
-        return Result<int>::fail(dbResult.error());
-    }
-    QSqlDatabase database = *dbResult;
-    CatalogSql::applyWritePragmas(database);
-
-    QSqlQuery query(database);
-    if (!query.exec(QStringLiteral(
-            "SELECT gs.hash_type, gs.hash_value "
-            "FROM game_signatures gs "
-            "JOIN games g ON g.game_id = gs.game_id "
-            "WHERE g.cover_url IS NULL OR g.cover_url = ''"))) {
-        return Result<int>::fail(query.lastError().text());
-    }
-
-    HasheousProvider provider;
-    int updated = 0;
-    while (query.next()) {
-        const QString hashType = query.value(0).toString();
-        const QString hashValue = query.value(1).toString();
-
-        QString crc;
-        QString md5;
-        QString sha1;
-        if (hashType == QStringLiteral("crc32"))
-            crc = hashValue;
-        else if (hashType == QStringLiteral("md5"))
-            md5 = hashValue;
-        else if (hashType == QStringLiteral("sha1"))
-            sha1 = hashValue;
-        else
-            continue;
-
-        const GameMetadata metadata = provider.lookupByHashes(crc, md5, sha1);
-        if (metadata.title.isEmpty() && metadata.boxArtUrl.isEmpty())
-            continue;
-
-        auto result = updateGameCover(database, hashType, hashValue, metadata);
-        if (!result) {
-            database.close();
-            QSqlDatabase::removeDatabase(database.connectionName());
-            return Result<int>::fail(result.error());
-        }
-        if (*result)
-            ++updated;
     }
 
     database.close();

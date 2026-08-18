@@ -13,12 +13,12 @@ public:
 
     GameMetadata lookupByHashes(const QString &crc32, const QString &md5, const QString &sha1) const;
 
+    static QByteArray lookupJson(const QString &crc32, const QString &md5, const QString &sha1);
+
 private:
     QString m_baseUrl;
 };
 
 Result<int> importHasheousJson(const QString &catalogDbPath, const QString &jsonPath);
-
-Result<int> enrichCatalogFromHasheous(const QString &catalogDbPath, bool online);
 
 } // namespace remustwo

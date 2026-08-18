@@ -18,18 +18,17 @@ QString artworkCacheDir() {
 }
 
 Result<QString> cacheArtwork(const QUrl &url, const QString &gameId, bool online) {
-    if (!online) {
-        return Result<QString>::fail(QStringLiteral("Artwork cache requires --online"));
-    }
-    if (!url.isValid() || url.scheme() != QStringLiteral("https")) {
-        return Result<QString>::fail(QStringLiteral("Unsupported artwork URL"));
-    }
-
     const QString suffix = QFileInfo(url.path()).suffix().isEmpty() ? QStringLiteral("jpg") : QFileInfo(url.path()).suffix();
     const QString destPath = artworkCacheDir() + QLatin1Char('/') + gameId + QLatin1Char('.') + suffix;
 
     if (QFile::exists(destPath)) {
         return Result<QString>::ok(destPath);
+    }
+    if (!online) {
+        return Result<QString>::fail(QStringLiteral("Artwork cache requires --online"));
+    }
+    if (!url.isValid() || url.scheme() != QStringLiteral("https")) {
+        return Result<QString>::fail(QStringLiteral("Unsupported artwork URL"));
     }
 
     HttpClient client;
@@ -50,6 +49,16 @@ Result<QString> cacheArtwork(const QUrl &url, const QString &gameId, bool online
     }
     file.close();
     return Result<QString>::ok(destPath);
+}
+
+QString cachedArtworkPath(const QString &gameId) {
+    if (gameId.trimmed().isEmpty())
+        return { };
+    const QDir dir(artworkCacheDir());
+    const QStringList matches = dir.entryList(QStringList { gameId + QStringLiteral(".*") }, QDir::Files);
+    if (matches.isEmpty())
+        return { };
+    return dir.absoluteFilePath(matches.first());
 }
 
 } // namespace remustwo
