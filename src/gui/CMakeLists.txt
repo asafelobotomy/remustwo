@@ -2,6 +2,7 @@ set(CMAKE_AUTORCC ON)
 
 qt_add_executable(remustwo-gui
     main.cpp
+    library_controller.cpp
     qml/resources.qrc
 )
 target_link_libraries(remustwo-gui PRIVATE

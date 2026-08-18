@@ -39,6 +39,8 @@ add_library(remustwo-core STATIC
     title_similarity.cpp
     archive_extractor.cpp
     archive_creator.cpp
+    library_paths.cpp
+    library_scan.cpp
     compendium_disc_bridge.cpp
     patched_rom_parser.cpp
     disc_magic_detector.cpp

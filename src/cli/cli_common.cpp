@@ -1,22 +1,15 @@
 #include "cli_common.h"
 
-#include <QCoreApplication>
-#include <QDir>
+#include "../core/library_paths.h"
 
 namespace remustwo::cli {
 
 QString defaultCatalogPath() {
-    const QString base
-        = QStandardPaths::writableLocation(QStandardPaths::AppDataLocation);
-    QDir().mkpath(base);
-    return base + QStringLiteral("/catalog.db");
+    return remustwo::defaultCatalogPath();
 }
 
 QString defaultLibraryPath() {
-    const QString base
-        = QStandardPaths::writableLocation(QStandardPaths::AppDataLocation);
-    QDir().mkpath(base);
-    return base + QStringLiteral("/library.db");
+    return remustwo::defaultLibraryPath();
 }
 
 } // namespace remustwo::cli

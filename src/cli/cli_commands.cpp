@@ -3,16 +3,11 @@
 #include "../catalog/catalog_match.h"
 #include "../core/database.h"
 #include "../core/hasher.h"
-#include "../core/scanner.h"
-#include "../core/organize_engine.h"
-#include "../core/template_engine.h"
+#include "../core/library_scan.h"
 #include "../core/verification_engine.h"
-#include "../core/m3u_generator.h"
-#include "../core/constants/systems.h"
-#include "../metadata/artwork_cache.h"
 #include "../metadata/hasheous_provider.h"
 #include "../metadata/library_enrich.h"
-#include "../core/rom_bundler.h"
+#include "../metadata/library_organize.h"
 #include "cli_common.h"
 
 #include <QCommandLineParser>
@@ -21,8 +16,6 @@
 #include <QJsonArray>
 #include <QJsonDocument>
 #include <QJsonObject>
-#include <QMap>
-#include <QSet>
 #include <QStringList>
 #include <QTextStream>
 
@@ -165,56 +158,21 @@ namespace {
         if (args.isEmpty()) {
             return printError(QStringLiteral("scan: missing DIR"));
         }
-        const QString scanPath = args.at(0);
-        const QFileInfo scanInfo(scanPath);
-        if (!scanInfo.exists() || !scanInfo.isDir()) {
-            return printError(QStringLiteral("scan: PATH must be a directory"));
-        }
         const QString libraryPath = libraryDbPath(parser);
-
-        Scanner scanner;
-        scanner.setArchiveScanning(false);
-        scanner.setExtensions(::remustwo::Constants::Systems::EXTENSION_TO_SYSTEMS.keys());
-        const QList<ScanResult> results = scanner.scan(scanPath);
-
-        Database db;
-        if (!db.initialize(libraryPath)) {
-            return printError(QStringLiteral("Failed to open library database"));
-        }
-        const int libraryId = db.insertLibrary(scanPath, QStringLiteral("scan"));
-        Hasher hasher;
-        int stored = 0;
-        int hashed = 0;
-        for (const ScanResult &item : results) {
-            FileRecord record;
-            record.libraryId = libraryId;
-            record.originalPath = item.path;
-            record.currentPath = item.path;
-            record.filename = item.filename;
-            record.extension = item.extension;
-            record.fileSize = item.fileSize;
-            record.lastModified = item.lastModified;
-            const int fileId = db.insertFile(record);
-            if (fileId <= 0) {
-                continue;
-            }
-            ++stored;
-            const HashResult hashes = hasher.calculateHashes(item.path);
-            if (hashes.success && db.updateFileHashes(fileId, hashes.crc32, hashes.md5, hashes.sha1)) {
-                ++hashed;
-            }
-        }
+        auto scanResult = scanLibrary(args.at(0), libraryPath);
+        if (!scanResult)
+            return printError(scanResult.error());
 
         if (json) {
             QJsonObject obj;
-            obj.insert(QStringLiteral("scanned"), results.size());
-            obj.insert(QStringLiteral("stored"), stored);
-            obj.insert(QStringLiteral("hashed"), hashed);
+            obj.insert(QStringLiteral("scanned"), scanResult->scanned);
+            obj.insert(QStringLiteral("stored"), scanResult->stored);
+            obj.insert(QStringLiteral("hashed"), scanResult->hashed);
             obj.insert(QStringLiteral("library"), libraryPath);
             QTextStream(stdout) << QJsonDocument(obj).toJson(QJsonDocument::Compact) << '\n';
         } else {
-            QTextStream(stdout) << "Scanned " << results.size() << " file(s), stored " << stored << ", hashed "
-                                << hashed << '\n';
+            QTextStream(stdout) << "Scanned " << scanResult->scanned << " file(s), stored " << scanResult->stored
+                                << ", hashed " << scanResult->hashed << '\n';
         }
         return 0;
     }
@@ -270,13 +228,6 @@ namespace {
         const bool dryRun = parser.isSet(QStringLiteral("dry-run"));
         const QString libraryPath = libraryDbPath(parser);
         const QString catalogPath = catalogDbPath(parser);
-
-        Database db;
-        if (!db.initialize(libraryPath)) {
-            return printError(QStringLiteral("Failed to open library database"));
-        }
-        db.setCompendiumDbPath(catalogPath);
-
         const bool bundle = parser.isSet(QStringLiteral("bundle"));
         const bool includeArt = parser.isSet(QStringLiteral("include-art"));
         const QString convertMode = parser.value(QStringLiteral("convert")).toLower();
@@ -284,101 +235,46 @@ namespace {
             return printError(QStringLiteral("organize: --convert must be auto or never"));
         }
 
-        const auto files = db.getFilesEligibleForOrganize();
-        const int skippedUnmatched = db.getAllFiles().size() - files.size();
-        QList<int> fileIds;
-        QMap<int, GameMetadata> metadataMap;
-        for (const FileRecord &file : files) {
-            fileIds.append(file.id);
-            GameMetadata meta;
-            meta.title = file.baseTitle;
-            meta.system = db.getSystemDisplayName(file.systemId);
-            metadataMap.insert(file.id, meta);
-        }
-
-        int ok = 0;
-        int failed = 0;
-        int skipped = 0;
-        QSet<int> organizedIds;
-        QStringList plannedEntries;
-
-        if (bundle) {
-            RomBundler bundler(db);
-            BundleConfig config;
-            config.dryRun = dryRun;
-            config.includeArt = includeArt;
-            config.convert
-                = convertMode == QStringLiteral("never") ? BundleConvertMode::Never : BundleConvertMode::Auto;
-            for (const FileRecord &file : files) {
-                if (includeArt)
-                    config.artworkPath = cachedArtworkPath(file.catalogGameId);
-                else
-                    config.artworkPath.clear();
-                const BundleResult bundled = bundler.bundle(file, metadataMap.value(file.id), dest, config);
-                if (bundled.skippedAlreadyBundled || bundled.skippedDiscSet) {
-                    ++skipped;
-                    if (bundled.skippedDiscSet)
-                        organizedIds.insert(file.id);
-                    continue;
-                }
-                if (!bundled.success) {
-                    ++failed;
-                    continue;
-                }
-                ++ok;
-                organizedIds.insert(file.id);
-                plannedEntries.append(bundled.archiveEntries);
-            }
-        } else {
-            OrganizeEngine engine(db);
-            engine.setDryRun(dryRun);
-            engine.setTemplate(TemplateEngine::getNoIntroTemplate());
-            const QList<OrganizeResult> results = engine.organizeFiles(fileIds, metadataMap, dest, FileOperation::Move);
-            for (const OrganizeResult &result : results) {
-                if (result.success)
-                    ++ok;
-                else
-                    ++failed;
-            }
-            for (int fileId : fileIds)
-                organizedIds.insert(fileId);
-        }
-
-        int playlists = 0;
-        if (!dryRun && failed == 0 && !organizedIds.isEmpty()) {
-            M3UGenerator playlistsEngine(db);
-            playlists = playlistsEngine.generateAll(organizedIds, dest);
-        }
+        OrganizeLibraryOptions options;
+        options.dryRun = dryRun;
+        options.bundle = bundle;
+        options.includeArt = includeArt;
+        options.convert = convertMode == QStringLiteral("never") ? BundleConvertMode::Never : BundleConvertMode::Auto;
+        auto organized = organizeLibrary(catalogPath, libraryPath, dest, options);
+        if (!organized)
+            return printError(organized.error());
 
         if (json) {
             QJsonObject obj;
             obj.insert(QStringLiteral("dest"), dest);
             obj.insert(QStringLiteral("dry_run"), dryRun);
-            obj.insert(QStringLiteral("organized"), ok);
-            obj.insert(QStringLiteral("failed"), failed);
-            obj.insert(QStringLiteral("skipped_unmatched"), skippedUnmatched);
-            obj.insert(QStringLiteral("playlists"), playlists);
-            obj.insert(QStringLiteral("skipped"), skipped);
+            obj.insert(QStringLiteral("organized"), organized->organized);
+            obj.insert(QStringLiteral("failed"), organized->failed);
+            obj.insert(QStringLiteral("skipped_unmatched"), organized->skippedUnmatched);
+            obj.insert(QStringLiteral("playlists"), organized->playlists);
+            obj.insert(QStringLiteral("skipped"), organized->skipped);
             obj.insert(QStringLiteral("bundle"), bundle);
-            if (!plannedEntries.isEmpty()) {
+            if (!organized->archiveEntries.isEmpty()) {
                 QJsonArray entries;
-                for (const QString &entry : plannedEntries)
+                for (const QString &entry : organized->archiveEntries)
                     entries.append(entry);
                 obj.insert(QStringLiteral("archive_entries"), entries);
             }
-            obj.insert(QStringLiteral("status"), failed == 0 ? QStringLiteral("ok") : QStringLiteral("partial"));
+            obj.insert(
+                QStringLiteral("status"), organized->failed == 0 ? QStringLiteral("ok") : QStringLiteral("partial"));
             QTextStream(stdout) << QJsonDocument(obj).toJson(QJsonDocument::Compact) << '\n';
         } else {
-            QTextStream(stdout) << (dryRun ? "[dry-run] " : "") << "organized " << ok << " file(s) into " << dest;
-            if (skippedUnmatched > 0)
-                QTextStream(stdout) << " (" << skippedUnmatched << " unmatched skipped)";
-            if (playlists > 0)
-                QTextStream(stdout) << ", " << playlists << " playlist(s)";
-            if (failed > 0)
-                QTextStream(stdout) << " (" << failed << " failed)";
+            QTextStream(stdout) << (dryRun ? "[dry-run] " : "") << "organized " << organized->organized
+                                << " file(s) into " << dest;
+            if (organized->skippedUnmatched > 0)
+                QTextStream(stdout) << " (" << organized->skippedUnmatched << " unmatched skipped)";
+            if (organized->playlists > 0)
+                QTextStream(stdout) << ", " << organized->playlists << " playlist(s)";
+            if (organized->failed > 0)
+                QTextStream(stdout) << " (" << organized->failed << " failed)";
             QTextStream(stdout) << '\n';
         }
-        return failed > 0 ? 1 : 0;
+        return organized->failed > 0 ? 1 : 0;
     }
 
     int cmdVerify(const QCommandLineParser &parser, bool json) {

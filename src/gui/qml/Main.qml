@@ -1,20 +1,33 @@
 import QtQuick
 import QtQuick.Controls
+import QtQuick.Dialogs
 import QtQuick.Layouts
 
 ApplicationWindow {
-    width: 720
-    height: 480
+    width: 780
+    height: 560
     visible: true
     title: "remustwo"
+
+    FolderDialog {
+        id: scanDialog
+        title: "Scan ROM folder"
+        onAccepted: libraryModel.scanFolder(selectedFolder)
+    }
+
+    FolderDialog {
+        id: destDialog
+        title: "Organize destination"
+        onAccepted: libraryModel.organize(selectedFolder, dryRunBox.checked, bundleBox.checked, artBox.checked, "auto")
+    }
 
     ColumnLayout {
         anchors.fill: parent
         anchors.margins: 16
-        spacing: 12
+        spacing: 10
 
         Label {
-            text: "remustwo library browser"
+            text: "remustwo library"
             font.pixelSize: 22
             font.bold: true
         }
@@ -22,16 +35,64 @@ ApplicationWindow {
         Label {
             text: "Catalog: " + libraryModel.catalogPath
             wrapMode: Text.Wrap
+            Layout.fillWidth: true
         }
 
         Label {
             text: "Library: " + libraryModel.libraryPath
             wrapMode: Text.Wrap
+            Layout.fillWidth: true
         }
 
-        Button {
-            text: "Refresh library"
-            onClicked: libraryModel.fileCount()
+        Flow {
+            Layout.fillWidth: true
+            spacing: 8
+            Button {
+                text: "Scan folder"
+                enabled: !libraryModel.busy
+                onClicked: scanDialog.open()
+            }
+            Button {
+                text: "Match library"
+                enabled: !libraryModel.busy
+                onClicked: libraryModel.matchAll()
+            }
+            Button {
+                text: "Enrich"
+                enabled: !libraryModel.busy
+                onClicked: libraryModel.enrich(onlineBox.checked, dryRunBox.checked)
+            }
+            Button {
+                text: "Organize"
+                enabled: !libraryModel.busy
+                onClicked: destDialog.open()
+            }
+            Button {
+                text: "Refresh"
+                enabled: !libraryModel.busy
+                onClicked: libraryModel.fileCount()
+            }
+        }
+
+        RowLayout {
+            CheckBox {
+                id: dryRunBox
+                text: "Dry run"
+                checked: true
+            }
+            CheckBox {
+                id: bundleBox
+                text: "Bundle"
+                checked: true
+            }
+            CheckBox {
+                id: artBox
+                text: "Include art"
+            }
+            CheckBox {
+                id: onlineBox
+                text: "Online enrich"
+            }
         }
 
         Label {
@@ -41,17 +102,21 @@ ApplicationWindow {
             Layout.fillWidth: true
         }
 
-        TextField {
-            id: matchPath
-            placeholderText: "Path to ROM file for catalog match"
+        RowLayout {
             Layout.fillWidth: true
-        }
-
-        Button {
-            text: "Match file"
-            onClicked: {
-                const title = libraryModel.matchFile(matchPath.text)
-                statusLabel.text = title.length > 0 ? ("Match: " + title) : libraryModel.status
+            TextField {
+                id: matchPath
+                placeholderText: "Path to ROM file for catalog match"
+                Layout.fillWidth: true
+                enabled: !libraryModel.busy
+            }
+            Button {
+                text: "Match file"
+                enabled: !libraryModel.busy
+                onClicked: {
+                    const title = libraryModel.matchFile(matchPath.text)
+                    statusLabel.text = title.length > 0 ? ("Match: " + title) : libraryModel.status
+                }
             }
         }
 

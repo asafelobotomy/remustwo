@@ -3,6 +3,7 @@ add_library(remustwo-metadata STATIC
     hasheous_provider.cpp
     artwork_cache.cpp
     library_enrich.cpp
+    library_organize.cpp
 )
 target_include_directories(remustwo-metadata PUBLIC
     ${CMAKE_SOURCE_DIR}/src
