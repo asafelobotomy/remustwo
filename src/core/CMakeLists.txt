@@ -38,6 +38,7 @@ add_library(remustwo-core STATIC
     system_resolver_provider_mappings.cpp
     title_similarity.cpp
     archive_extractor.cpp
+    archive_creator.cpp
     compendium_disc_bridge.cpp
     patched_rom_parser.cpp
     disc_magic_detector.cpp
@@ -62,6 +63,7 @@ add_library(remustwo-core STATIC
     rvz_converter.cpp
     pbp_exporter.cpp
     external_tool_runner.cpp
+    rom_bundler.cpp
 )
 target_include_directories(remustwo-core PUBLIC
     ${CMAKE_SOURCE_DIR}/src
@@ -79,6 +81,7 @@ if(REMUSTWO_ENABLE_LIBARCHIVE)
     target_sources(remustwo-core PRIVATE
         archive_extractor_extract.cpp
         archive_extractor_info.cpp
+        archive_creator_compress.cpp
     )
     target_compile_definitions(remustwo-core PUBLIC REMUSTWO_HAS_LIBARCHIVE=1)
     target_link_libraries(remustwo-core PUBLIC LibArchive::LibArchive)

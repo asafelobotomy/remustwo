@@ -145,6 +145,16 @@ add_remustwo_test(test_hasheous_import HasheousImportTest
     LIBS Qt6::Test Qt6::Sql remustwo-metadata
 )
 
+add_remustwo_test(test_library_enrich LibraryEnrichTest
+    SOURCES test_library_enrich.cpp
+    LIBS Qt6::Test Qt6::Sql remustwo-metadata
+)
+
+add_remustwo_test(test_rom_bundler RomBundlerTest
+    SOURCES test_rom_bundler.cpp
+    LIBS Qt6::Test Qt6::Sql remustwo-catalog remustwo-core
+)
+
 add_remustwo_test(test_verification_engine VerificationEngineTest
     SOURCES test_verification_engine.cpp test_verification_engine_reports.cpp test_verification_engine_fixture.h
     LIBS Qt6::Test Qt6::Sql remustwo-core
