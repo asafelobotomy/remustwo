@@ -489,7 +489,7 @@ int run(int argc, char *argv[]) {
     QCoreApplication app(argc, argv);
     QCoreApplication::setApplicationName(QStringLiteral("remustwo"));
     QCoreApplication::setOrganizationName(QStringLiteral("remustwo"));
-    QCoreApplication::setApplicationVersion(QStringLiteral("0.4.0"));
+    QCoreApplication::setApplicationVersion(QStringLiteral("0.5.0"));
 
     QCommandLineParser parser;
     parser.setApplicationDescription(QStringLiteral("Offline ROM catalog and library manager."));

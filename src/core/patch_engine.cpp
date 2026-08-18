@@ -1,10 +1,9 @@
 #include "patch_engine.h"
+#include "external_tool_runner.h"
 #include <QFile>
 #include <QFileInfo>
 #include <QDir>
 #include <QProcess>
-#include <QStandardPaths>
-#include <QCoreApplication>
 #include <QDebug>
 #include <QCryptographicHash>
 #include "logging_categories.h"
@@ -39,27 +38,11 @@ PatchEngine::PatchEngine(QObject *parent)
     : QObject(parent) { }
 
 QString PatchEngine::findExecutable(const QString &name) {
-    // Check in PATH
-    QString path = QStandardPaths::findExecutable(name);
-    if (!path.isEmpty()) {
-        return path;
-    }
-
-    // Check common locations
-    QStringList searchPaths = { "/usr/bin", "/usr/local/bin",
-        "/opt/homebrew/bin", // macOS Homebrew
-        QDir::homePath() + "/.local/bin",
-        QCoreApplication::applicationDirPath(), // Same dir as Remus
-        QCoreApplication::applicationDirPath() + "/tools" };
-
-    for (const QString &searchPath : searchPaths) {
-        QString candidate = searchPath + "/" + name;
-        if (QFile::exists(candidate)) {
-            return candidate;
-        }
-    }
-
-    return QString();
+    const QString resolved = ExternalToolRunner::findTool(name);
+    const QFileInfo info(resolved);
+    if (info.isAbsolute() && info.isFile() && info.isExecutable())
+        return resolved;
+    return {};
 }
 
 QString PatchEngine::getFlipsPath() {

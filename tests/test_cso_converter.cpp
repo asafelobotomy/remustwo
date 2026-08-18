@@ -107,7 +107,7 @@ void CsoConverterTest::testConvertIsoUsesDefaultOutputPath() {
     const ConversionResult result = converter.convertIsoToCSO(isoPath);
     QVERIFY(result.success);
     QCOMPARE(result.outputPath, dir.path() + QStringLiteral("/game.cso"));
-    QCOMPARE(converter.lastProgram, QStringLiteral("maxcso"));
+    QCOMPARE(converter.lastProgram, ExternalToolRunner::findTool(QStringLiteral("maxcso")));
     const QStringList expectedArgs { isoPath, QStringLiteral("-o"), dir.path() + QStringLiteral("/game.cso") };
     QCOMPARE(converter.lastArgs, expectedArgs);
 }

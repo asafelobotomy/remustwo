@@ -2,6 +2,7 @@
 
 #include "constants/providers.h"
 #include "constants/system_ids.h"
+#include "external_tool_runner.h"
 #include "system_resolver.h"
 
 #include <QCoreApplication>
@@ -11,7 +12,6 @@
 #include <QFileInfo>
 #include <QProcess>
 #include <QRegularExpression>
-#include <QStandardPaths>
 
 namespace remustwo {
 
@@ -120,9 +120,10 @@ namespace {
             return envPath;
 
         for (const QString &name : { QStringLiteral("RAHasher"), QStringLiteral("rahasher") }) {
-            const QString inPath = QStandardPaths::findExecutable(name);
-            if (!inPath.isEmpty())
-                return inPath;
+            const QString resolved = ExternalToolRunner::findTool(name);
+            const QFileInfo info(resolved);
+            if (info.isAbsolute() && info.isFile() && info.isExecutable())
+                return resolved;
         }
 
         const QString dataRoot = qEnvironmentVariable("REMUSTWO_DATA_DIR");

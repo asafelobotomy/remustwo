@@ -55,7 +55,7 @@ ConversionResult RVZConverter::convertIsoToRVZ(const QString &isoPath, const QSt
         args << ("--compression_level=" + QString::number(m_compressionLevel));
     }
 
-    return runToolConversion(m_dolphinToolPath, args, "dolphin-tool", isoPath, output);
+    return runToolConversion(findTool(m_dolphinToolPath), args, "dolphin-tool", isoPath, output);
 }
 
 ConversionResult RVZConverter::extractRVZToIso(const QString &rvzPath, const QString &outputPath) {
@@ -66,7 +66,7 @@ ConversionResult RVZConverter::extractRVZToIso(const QString &rvzPath, const QSt
          << "--format=iso"
          << "--input" << rvzPath << "--output" << output;
 
-    return runToolConversion(m_dolphinToolPath, args, "dolphin-tool", rvzPath, output);
+    return runToolConversion(findTool(m_dolphinToolPath), args, "dolphin-tool", rvzPath, output);
 }
 
 VerifyResult RVZConverter::verifyRVZ(const QString &rvzPath) {
@@ -74,7 +74,7 @@ VerifyResult RVZConverter::verifyRVZ(const QString &rvzPath) {
     result.path = rvzPath;
 
     ProcessResult processResult
-        = runProcess(m_dolphinToolPath, QStringList() << "verify" << "--input" << rvzPath, 300000);
+        = runProcess(findTool(m_dolphinToolPath), QStringList() << "verify" << "--input" << rvzPath, 300000);
 
     result.valid = (processResult.exitCode == 0);
     result.details = processResult.stdOutput;
@@ -90,7 +90,7 @@ QString RVZConverter::discContentSha1(const QString &discPath) {
     if (discPath.trimmed().isEmpty())
         return QString();
 
-    ProcessResult processResult = runProcess(m_dolphinToolPath,
+    ProcessResult processResult = runProcess(findTool(m_dolphinToolPath),
         QStringList() << QStringLiteral("verify") << QStringLiteral("-a") << QStringLiteral("sha1")
                       << QStringLiteral("--input") << discPath,
         600000);

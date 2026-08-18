@@ -320,3 +320,12 @@ cmake -S . -B build -G Ninja && cmake --build build
 ./build/remustwo hash testdata/fixture.bin
 ./build/remustwo match testdata/fixture.bin
 ```
+
+## Post-v1 pipeline (enrich + bundle)
+
+Required path is unchanged: `catalog init` → `catalog ingest` → `scan` → `match` → `list` / `verify` / `organize`. Optional work runs **after match** only.
+
+- Persist `files.catalog_game_id` so library rows join catalog games. Match uses stored hashes; do not re-hash unless `hash_calculated` is false. Organize matched titles only; write M3U playlists for disc sets.
+- `enrich [--online] [--dry-run]` is library-scoped. HTTP count must follow unmatched gaps in the library, not DAT size. Store HTTPS URLs in catalog.db; download bytes to `~/.cache/remustwo/artwork/` on GUI paint or `organize --include-art` cache hit. Negative-cache empty Hasheous results in library.db. `catalog enrich` is rejected.
+- `organize DEST --bundle` writes zip + `.remus.md` (no network). `--convert auto` (default with `--bundle`) converts CD images to CHD, GC/Wii to RVZ, PSP ISO to CSO when tools exist; never zip-of-zip or a whole disc set into one archive.
+- Artwork policy unchanged: no SQLite BLOBs, no remus-thumbnails CAS, no catalog-wide provider waterfall.

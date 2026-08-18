@@ -33,7 +33,7 @@ ConversionResult WBFSConverter::convertIsoToWbfs(const QString &isoPath, const Q
     QStringList args;
     args << "copy" << isoPath << "--dest" << output;
 
-    return runToolConversion(m_witPath, args, "wit", isoPath, output);
+    return runToolConversion(findTool(m_witPath), args, "wit", isoPath, output);
 }
 
 ConversionResult WBFSConverter::extractWbfsToIso(const QString &wbfsPath, const QString &outputPath) {
@@ -43,7 +43,7 @@ ConversionResult WBFSConverter::extractWbfsToIso(const QString &wbfsPath, const 
     QStringList args;
     args << "copy" << wbfsPath << "--dest" << output;
 
-    return runToolConversion(m_witPath, args, "wit", wbfsPath, output);
+    return runToolConversion(findTool(m_witPath), args, "wit", wbfsPath, output);
 }
 
 } // namespace remustwo

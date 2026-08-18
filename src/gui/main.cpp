@@ -165,7 +165,7 @@ int main(int argc, char *argv[]) {
     QGuiApplication app(argc, argv);
     QCoreApplication::setApplicationName(QStringLiteral("remustwo-gui"));
     QCoreApplication::setOrganizationName(QStringLiteral("remustwo"));
-    QCoreApplication::setApplicationVersion(QStringLiteral("0.4.0"));
+    QCoreApplication::setApplicationVersion(QStringLiteral("0.5.0"));
 
     LibraryListModel model;
     QQmlApplicationEngine engine;

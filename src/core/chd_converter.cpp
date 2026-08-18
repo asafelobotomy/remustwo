@@ -18,7 +18,7 @@ bool CHDConverter::isChdmanAvailable() const {
 }
 
 QString CHDConverter::getChdmanVersion() const {
-    auto result = const_cast<CHDConverter *>(this)->runProcess(m_chdmanPath, QStringList() << "--help", 5000);
+    auto result = const_cast<CHDConverter *>(this)->runProcess(findTool(m_chdmanPath), QStringList() << "--help", 5000);
     QString output = result.stdOutput;
 
     // Parse version from output (typically first line)
@@ -75,14 +75,14 @@ ConversionResult CHDConverter::extractCHDToCue(const QString &chdPath, const QSt
     QString output = outputPath.isEmpty() ? getDefaultOutputPath(chdPath, "cue") : outputPath;
     QStringList args;
     args << "extractcd" << "-i" << chdPath << "-o" << output;
-    return runToolConversion(m_chdmanPath, args, "chdman", chdPath, output);
+    return runToolConversion(findTool(m_chdmanPath), args, "chdman", chdPath, output);
 }
 
 VerifyResult CHDConverter::verifyCHD(const QString &chdPath) {
     VerifyResult result;
     result.path = chdPath;
 
-    ProcessResult processResult = runProcess(m_chdmanPath, QStringList() << "verify" << "-i" << chdPath, 300000);
+    ProcessResult processResult = runProcess(findTool(m_chdmanPath), QStringList() << "verify" << "-i" << chdPath, 300000);
 
     result.valid = (processResult.exitCode == 0);
     result.details = processResult.stdOutput;
@@ -105,7 +105,7 @@ CHDInfo CHDConverter::getCHDInfo(const QString &chdPath) {
         info.version = nativeDigest.version;
     }
 
-    ProcessResult processResult = runProcess(m_chdmanPath, QStringList() << "info" << "-i" << chdPath, 30000);
+    ProcessResult processResult = runProcess(findTool(m_chdmanPath), QStringList() << "info" << "-i" << chdPath, 30000);
 
     if (!processResult.started || processResult.exitCode != 0) {
         return info;
@@ -222,7 +222,7 @@ ConversionResult CHDConverter::runChdman(const QStringList &args, const QString 
         }
     }
 
-    return runToolConversion(m_chdmanPath, args, "chdman", inputPath, outputPath, inputSize);
+    return runToolConversion(findTool(m_chdmanPath), args, "chdman", inputPath, outputPath, inputSize);
 }
 
 QString CHDConverter::getCodecString() const {

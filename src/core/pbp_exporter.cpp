@@ -32,7 +32,7 @@ ConversionResult PBPExporter::exportToPBP(const QString &sourcePath, const QStri
     QStringList args;
     args << sourcePath << output;
 
-    return runToolConversion(m_psxPackagerPath, args, "PSXPackager", sourcePath, output);
+    return runToolConversion(findTool(m_psxPackagerPath), args, "PSXPackager", sourcePath, output);
 }
 
 } // namespace remustwo

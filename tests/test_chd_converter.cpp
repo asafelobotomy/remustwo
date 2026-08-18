@@ -2,6 +2,7 @@
 #include <QTemporaryDir>
 #include <QFile>
 #include "../src/core/chd_converter.h"
+#include "../src/core/external_tool_runner.h"
 
 using namespace remustwo;
 
@@ -237,7 +238,7 @@ void ChdConverterTest::testConvertCueAndGdiIncludeConfiguredArguments() {
 
     ConversionResult cueResult = converter.convertCueToCHD(cuePath, cueOutputPath);
     QVERIFY(cueResult.success);
-    QCOMPARE(converter.lastProgram, QStringLiteral("chdman"));
+    QCOMPARE(converter.lastProgram, ExternalToolRunner::findTool(QStringLiteral("chdman")));
     QCOMPARE(converter.lastArgs.value(0), QStringLiteral("createcd"));
     QCOMPARE(converter.lastArgs.value(2), cuePath);
     QCOMPARE(converter.lastArgs.value(4), cueOutputPath);

@@ -17,7 +17,7 @@ bool CSOConverter::isMaxcsoAvailable() const {
 }
 
 QString CSOConverter::getMaxcsoVersion() const {
-    auto result = const_cast<CSOConverter *>(this)->runProcess(m_maxcsoPath, QStringList() << "--version", 5000);
+    auto result = const_cast<CSOConverter *>(this)->runProcess(findTool(m_maxcsoPath), QStringList() << "--version", 5000);
     // maxcso may print version to stdout or stderr
     QString output = result.stdOutput.isEmpty() ? result.stdError : result.stdOutput;
     QStringList lines = output.split('\n');
@@ -34,7 +34,7 @@ ConversionResult CSOConverter::convertIsoToCSO(const QString &isoPath, const QSt
     QStringList args;
     args << isoPath << "-o" << output;
 
-    return runToolConversion(m_maxcsoPath, args, "maxcso", isoPath, output);
+    return runToolConversion(findTool(m_maxcsoPath), args, "maxcso", isoPath, output);
 }
 
 ConversionResult CSOConverter::extractCSOToIso(const QString &csoPath, const QString &outputPath) {
@@ -43,7 +43,7 @@ ConversionResult CSOConverter::extractCSOToIso(const QString &csoPath, const QSt
     QStringList args;
     args << "--decompress" << csoPath << "-o" << output;
 
-    return runToolConversion(m_maxcsoPath, args, "maxcso", csoPath, output);
+    return runToolConversion(findTool(m_maxcsoPath), args, "maxcso", csoPath, output);
 }
 
 CSOVerifyResult CSOConverter::verifyCSO(const QString &csoPath) {

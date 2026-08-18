@@ -20,6 +20,11 @@ public:
 
     virtual void cancel();
     bool isRunning() const;
+
+    /// Resolve a CLI tool to an executable. Searches REMUSTWO_TOOL_PATH, ~/.local/bin,
+    /// PATH (.deb/AUR/pacman/Homebrew), /usr/games, Snap aliases, Nix/Guix, and Flatpak
+    /// (writes a cache wrapper for extra commands such as dolphin-tool). Returns @p name
+    /// unchanged when nothing is found, or when @p name is already a path.
     static QString findTool(const QString &name);
 
 protected:
