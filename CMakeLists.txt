@@ -6,6 +6,7 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_AUTOMOC ON)
 
 include(CTest)
+include(GNUInstallDirs)
 
 option(REMUSTWO_ENABLE_CCACHE "Use ccache when available" ON)
 if(REMUSTWO_ENABLE_CCACHE)
@@ -49,6 +50,7 @@ endif()
 
 add_executable(remustwo src/cli/main.cpp src/cli/cli_common.cpp src/cli/cli_commands.cpp)
 target_link_libraries(remustwo PRIVATE Qt6::Core remustwo-core remustwo-catalog remustwo-metadata)
+install(TARGETS remustwo RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR})
 
 if(BUILD_TESTING)
     find_package(Qt6 REQUIRED COMPONENTS Test)

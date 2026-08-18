@@ -1,0 +1,9 @@
+[Desktop Entry]
+Type=Application
+Name=remustwo
+Comment=Offline ROM catalog and library manager
+Exec=remustwo-gui
+Icon=applications-games
+Terminal=false
+Categories=Utility;Game;
+StartupNotify=true

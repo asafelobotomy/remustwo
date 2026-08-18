@@ -12,6 +12,17 @@ cmake --build build
 ctest --test-dir build --output-on-failure
 ```
 
+Install to a prefix (system Qt stays on the machine; converters stay external):
+
+```bash
+cmake --install build --prefix "$HOME/.local"
+# or a relocatable tree + tarball:
+cmake --install build --prefix /tmp/remustwo-prefix
+tar -C /tmp/remustwo-prefix -czf remustwo-0.5.0-linux.tar.gz .
+```
+
+`remustwo` and `remustwo-gui` share `~/.local/share/remustwo/{catalog,library}.db`. Catalog ingest stays CLI-only.
+
 ## Quick Start
 
 Two databases: **catalog.db** (DAT reference) and **library.db** (your files). Init cannot match.

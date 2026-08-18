@@ -15,3 +15,7 @@ target_link_libraries(remustwo-gui PRIVATE
     remustwo-catalog
     remustwo-metadata
 )
+install(TARGETS remustwo-gui RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR})
+install(FILES ${CMAKE_SOURCE_DIR}/data/remustwo-gui.desktop
+    DESTINATION ${CMAKE_INSTALL_DATADIR}/applications
+)
