@@ -72,6 +72,7 @@ bool Database::createSchema() {
             is_primary BOOLEAN DEFAULT 1,
             parent_file_id INTEGER,
             base_title TEXT,
+            catalog_game_id TEXT,
             disc_set_key TEXT,
             disc_number INTEGER DEFAULT 0,
             file_type TEXT DEFAULT 'official',
@@ -117,6 +118,7 @@ bool Database::createSchema() {
     execMigration("ALTER TABLE files ADD COLUMN has_local_artwork INTEGER DEFAULT 0");
     execMigration("ALTER TABLE files ADD COLUMN chd_sha1 TEXT");
     execMigration("ALTER TABLE files ADD COLUMN rvz_sha1 TEXT");
+    execMigration("ALTER TABLE files ADD COLUMN catalog_game_id TEXT");
 
     if (!query.exec("CREATE INDEX IF NOT EXISTS idx_files_processed ON files(is_processed)")) {
         qWarning() << "Failed to create idx_files_processed:" << query.lastError().text();
@@ -129,6 +131,9 @@ bool Database::createSchema() {
     }
     if (!query.exec("CREATE INDEX IF NOT EXISTS idx_files_hashes ON files(crc32, md5, sha1)")) {
         qWarning() << "Failed to create idx_files_hashes:" << query.lastError().text();
+    }
+    if (!query.exec("CREATE INDEX IF NOT EXISTS idx_files_catalog_game_id ON files(catalog_game_id)")) {
+        qWarning() << "Failed to create idx_files_catalog_game_id:" << query.lastError().text();
     }
     query.exec("DROP INDEX IF EXISTS idx_files_original_path");
     if (!query.exec("CREATE UNIQUE INDEX IF NOT EXISTS idx_files_original_path "

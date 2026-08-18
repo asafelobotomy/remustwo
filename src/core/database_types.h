@@ -30,6 +30,7 @@ struct FileRecord {
     bool isPrimary = true;
     int parentFileId = 0;
     QString baseTitle;
+    QString catalogGameId;
     QString discSetKey;
     int discNumber = 0;
     QString fileType = Constants::FileTypes::OFFICIAL;
@@ -37,6 +38,8 @@ struct FileRecord {
     QString patchName;
     bool isProcessed = false;
     QString processingStatus = Constants::Engines::ProcessingStatus::UNPROCESSED;
+    bool isBundled = false;
+    QString bundleOutputPath;
     QDateTime lastModified;
     QDateTime scannedAt;
 };

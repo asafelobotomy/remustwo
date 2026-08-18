@@ -34,6 +34,7 @@ private slots:
     void testFolderNamingSchemeFromString();
     void testOrganizeFile_traversalTitleContained();
     void testMultiDiscSetUsesGameSubfolder();
+    void testUnmatchedFileIsNotEligible();
 
 private:
     // Write a small ROM file into dir and register it in db.
@@ -616,6 +617,28 @@ void OrganizeEngineTest::testMultiDiscSetUsesGameSubfolder() {
     QVERIFY(result.newPath.contains(QStringLiteral("Final Fantasy VII")));
     const QFileInfo info(result.newPath);
     QVERIFY(info.absolutePath().contains(QStringLiteral("Final Fantasy VII")));
+}
+
+void OrganizeEngineTest::testUnmatchedFileIsNotEligible() {
+    QTemporaryDir srcDir;
+    QVERIFY(srcDir.isValid());
+
+    Database db;
+    QVERIFY(db.initialize(":memory:"));
+    const int unmatchedId = makeRomFile(srcDir, db, QStringLiteral("unknown.nes"));
+    QVERIFY(unmatchedId > 0);
+    QCOMPARE(db.getFilesEligibleForOrganize().size(), 0);
+
+    const int matchedId = makeRomFile(srcDir, db, QStringLiteral("matched.nes"));
+    QVERIFY(matchedId > 0);
+    const int sysId = db.getSystemId("NES");
+    const int gameId = db.insertGame(QStringLiteral("Fixture Game (USA)"), sysId);
+    QVERIFY(gameId > 0);
+    QVERIFY(db.insertMatch(matchedId, gameId, 1.0f, QStringLiteral("hash")));
+    QVERIFY(db.confirmMatch(matchedId));
+    QVERIFY(db.updateFileCatalogMatch(matchedId, sysId, QStringLiteral("Fixture Game (USA)"), QStringLiteral("g-1")));
+    QCOMPARE(db.getFilesEligibleForOrganize().size(), 1);
+    QCOMPARE(db.getFilesEligibleForOrganize().first().id, matchedId);
 }
 
 QTEST_MAIN(OrganizeEngineTest)

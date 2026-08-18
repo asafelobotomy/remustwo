@@ -5,6 +5,7 @@
 #include "../core/constants/match_methods.h"
 #include "../core/database.h"
 #include "../core/hasher.h"
+#include "../core/matching_engine.h"
 #include "../core/system_resolver.h"
 
 #include <QFileInfo>
@@ -14,6 +15,16 @@
 namespace remustwo::catalog {
 
 namespace {
+
+HashResult hashesFromRecord(const FileRecord &file) {
+    HashResult hashes;
+    hashes.crc32 = file.crc32;
+    hashes.md5 = file.md5;
+    hashes.sha1 = file.sha1;
+    hashes.success = file.hashCalculated
+        && (!file.sha1.isEmpty() || !file.md5.isEmpty() || !file.crc32.isEmpty());
+    return hashes;
+}
 
 Result<CatalogMatch> lookupHashes(QSqlDatabase &db, const HashResult &hashes) {
     const auto lookup = [&](const QString &hashType, const QString &value) -> Result<CatalogMatch> {
@@ -55,13 +66,8 @@ Result<CatalogMatch> lookupHashes(QSqlDatabase &db, const HashResult &hashes) {
     return result;
 }
 
-Result<void> writeLibraryRecord(const QString &libraryPath, const QString &filePath, const HashResult &hashes,
-    const CatalogMatch &match) {
-    Database library;
-    if (!library.initialize(libraryPath)) {
-        return Result<void>::fail(QStringLiteral("Failed to open library database"));
-    }
-
+Result<void> writeLibraryRecord(Database &library, const QString &filePath, const HashResult &hashes,
+    const CatalogMatch &match, int existingFileId) {
     int systemId = match.systemId;
     if (!SystemResolver::isValidSystem(systemId)) {
         systemId = library.getSystemId(QStringLiteral("NES"));
@@ -71,32 +77,36 @@ Result<void> writeLibraryRecord(const QString &libraryPath, const QString &fileP
     }
 
     const QFileInfo info(filePath);
-    int libraryId = library.insertLibrary(info.absolutePath(), QStringLiteral("default"));
-    if (libraryId <= 0) {
-        libraryId = 1;
-    }
-
-    FileRecord record;
-    record.libraryId = libraryId;
-    record.originalPath = info.absoluteFilePath();
-    record.currentPath = info.absoluteFilePath();
-    record.filename = info.fileName();
-    record.extension = QStringLiteral(".") + info.suffix().toLower();
-    record.fileSize = info.size();
-    record.systemId = systemId;
-    record.crc32 = hashes.crc32;
-    record.md5 = hashes.md5;
-    record.sha1 = hashes.sha1;
-    record.hashCalculated = true;
-    record.baseTitle = match.title;
-    record.lastModified = info.lastModified();
-    int fileId = library.insertFile(record);
+    int fileId = existingFileId;
     if (fileId <= 0) {
-        const auto existing = library.getAllFiles();
-        for (const FileRecord &file : existing) {
-            if (file.originalPath == record.originalPath && file.filename == record.filename) {
-                fileId = file.id;
-                break;
+        int libraryId = library.insertLibrary(info.absolutePath(), QStringLiteral("default"));
+        if (libraryId <= 0) {
+            libraryId = 1;
+        }
+
+        FileRecord record;
+        record.libraryId = libraryId;
+        record.originalPath = info.absoluteFilePath();
+        record.currentPath = info.absoluteFilePath();
+        record.filename = info.fileName();
+        record.extension = QStringLiteral(".") + info.suffix().toLower();
+        record.fileSize = info.size();
+        record.systemId = systemId;
+        record.crc32 = hashes.crc32;
+        record.md5 = hashes.md5;
+        record.sha1 = hashes.sha1;
+        record.hashCalculated = true;
+        record.baseTitle = match.title;
+        record.catalogGameId = match.gameId;
+        record.lastModified = info.lastModified();
+        fileId = library.insertFile(record);
+        if (fileId <= 0) {
+            const auto existing = library.getAllFiles();
+            for (const FileRecord &file : existing) {
+                if (file.originalPath == record.originalPath && file.filename == record.filename) {
+                    fileId = file.id;
+                    break;
+                }
             }
         }
     }
@@ -105,6 +115,9 @@ Result<void> writeLibraryRecord(const QString &libraryPath, const QString &fileP
     }
     if (!library.updateFileHashes(fileId, hashes.crc32, hashes.md5, hashes.sha1)) {
         return Result<void>::fail(QStringLiteral("Failed to store library hashes"));
+    }
+    if (!library.updateFileCatalogMatch(fileId, systemId, match.title, match.gameId)) {
+        return Result<void>::fail(QStringLiteral("Failed to store catalog identity"));
     }
 
     const int gameId = library.insertGame(match.title, systemId);
@@ -116,6 +129,9 @@ Result<void> writeLibraryRecord(const QString &libraryPath, const QString &fileP
         return Result<void>::fail(QStringLiteral("Failed to insert library match"));
     }
     library.confirmMatch(fileId);
+    if (!library.updateFileCatalogMatch(fileId, systemId, match.title, match.gameId)) {
+        return Result<void>::fail(QStringLiteral("Failed to restore catalog identity after confirm"));
+    }
     return Result<void>::ok();
 }
 
@@ -148,12 +164,67 @@ Result<CatalogMatch> matchFile(const QString &dbPath, const QString &filePath, c
         return result;
     }
     if (!libraryPath.isEmpty()) {
-        auto written = writeLibraryRecord(libraryPath, filePath, hashes, *result);
+        Database library;
+        if (!library.initialize(libraryPath)) {
+            return Result<CatalogMatch>::fail(QStringLiteral("Failed to open library database"));
+        }
+        auto written = writeLibraryRecord(library, filePath, hashes, *result, 0);
         if (!written) {
             return Result<CatalogMatch>::fail(written.error());
         }
     }
     return result;
+}
+
+Result<int> matchLibrary(const QString &dbPath, const QString &libraryPath) {
+    Database library;
+    if (!library.initialize(libraryPath)) {
+        return Result<int>::fail(QStringLiteral("Failed to open library database"));
+    }
+
+    const QList<FileRecord> files = library.getAllFiles();
+    if (files.isEmpty()) {
+        return Result<int>::fail(QStringLiteral("Library is empty — run scan DIR first"));
+    }
+
+    auto dbResult = open(dbPath, QStringLiteral("catalog_match_library"));
+    if (!dbResult) {
+        return Result<int>::fail(dbResult.error());
+    }
+    QSqlDatabase catalogDb = *dbResult;
+    CatalogSql::applyReadOnlyPragmas(catalogDb);
+
+    Hasher hasher;
+    int matched = 0;
+    for (const FileRecord &file : files) {
+        const MatchResult existing = library.getMatchForFile(file.id);
+        if (existing.isConfirmed && !file.catalogGameId.isEmpty()) {
+            ++matched;
+            continue;
+        }
+
+        HashResult hashes = hashesFromRecord(file);
+        if (!hashes.success) {
+            hashes = hasher.calculateHashes(file.currentPath);
+            if (!hashes.success) {
+                continue;
+            }
+        }
+
+        auto result = lookupHashes(catalogDb, hashes);
+        if (!result) {
+            continue;
+        }
+        auto written = writeLibraryRecord(library, file.currentPath, hashes, *result, file.id);
+        if (written) {
+            ++matched;
+        }
+    }
+
+    const QString conn = catalogDb.connectionName();
+    catalogDb.close();
+    QSqlDatabase::removeDatabase(conn);
+    return Result<int>::ok(matched);
 }
 
 } // namespace remustwo::catalog

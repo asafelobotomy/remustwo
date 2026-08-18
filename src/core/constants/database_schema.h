@@ -103,6 +103,7 @@ namespace Constants {
                 inline constexpr const char *IS_PRIMARY = "is_primary";
                 inline constexpr const char *PARENT_FILE_ID = "parent_file_id";
                 inline constexpr const char *BASE_TITLE = "base_title";
+                inline constexpr const char *CATALOG_GAME_ID = "catalog_game_id";
                 inline constexpr const char *DISC_SET_KEY = "disc_set_key";
                 inline constexpr const char *DISC_NUMBER = "disc_number";
                 inline constexpr const char *FILE_TYPE = "file_type";

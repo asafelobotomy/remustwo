@@ -17,5 +17,6 @@ struct CatalogMatch {
 
 Result<CatalogMatch> matchFile(const QString &dbPath, const QString &filePath);
 Result<CatalogMatch> matchFile(const QString &dbPath, const QString &filePath, const QString &libraryPath);
+Result<int> matchLibrary(const QString &dbPath, const QString &libraryPath);
 
 } // namespace remustwo::catalog

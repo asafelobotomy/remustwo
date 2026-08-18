@@ -17,14 +17,14 @@ namespace {
     // 10=system_id, 11=crc32, 12=md5, 13=sha1, 14=ra_md5, 15=chd_sha1, 16=rvz_sha1, 17=hash_calculated,
     // 18=is_primary, 19=parent_file_id, 20=base_title, 21=disc_set_key, 22=disc_number,
     // 23=file_type, 24=is_patched, 25=patch_name, 26=is_processed, 27=processing_status,
-    // 28=last_modified, 29=scanned_at
+    // 28=last_modified, 29=scanned_at, 30=catalog_game_id, 31=is_bundled, 32=bundle_output_path
     static const char kFileSelectColumns[]
         = "id, library_id, original_path, current_path, filename, extension, "
           "file_size, is_compressed, archive_path, archive_internal_path, "
           "system_id, crc32, md5, sha1, ra_md5, chd_sha1, rvz_sha1, hash_calculated, "
           "is_primary, parent_file_id, base_title, disc_set_key, disc_number, "
           "file_type, is_patched, patch_name, is_processed, processing_status, "
-          "last_modified, scanned_at";
+          "last_modified, scanned_at, catalog_game_id, is_bundled, bundle_output_path";
 
     static FileRecord fileRecordFromRow(const QSqlQuery &q) {
         FileRecord r;
@@ -58,6 +58,9 @@ namespace {
         r.processingStatus = q.value(27).toString();
         r.lastModified = q.value(28).toDateTime();
         r.scannedAt = q.value(29).toDateTime();
+        r.catalogGameId = q.value(30).toString();
+        r.isBundled = q.value(31).toBool();
+        r.bundleOutputPath = q.value(32).toString();
         return r;
     }
 
@@ -407,6 +410,61 @@ QList<FileRecord> Database::getFilesWithConfirmedMatch() {
     while (query.next())
         files.append(fileRecordFromRow(query));
     return files;
+}
+
+QList<FileRecord> Database::getFilesEligibleForOrganize() {
+    QSqlQuery query(m_db);
+    const QString sql = QString("SELECT %1 FROM files "
+                                "WHERE TRIM(COALESCE(base_title, '')) != '' "
+                                "AND id IN ("
+                                "  SELECT DISTINCT file_id FROM matches WHERE is_confirmed = 1 AND is_rejected = 0"
+                                ")")
+                            .arg(QLatin1String(kFileSelectColumns));
+    if (!query.exec(sql)) {
+        logError("Failed to get files eligible for organize: " + query.lastError().text());
+        return { };
+    }
+    QList<FileRecord> files;
+    while (query.next())
+        files.append(fileRecordFromRow(query));
+    return files;
+}
+
+bool Database::updateFileCatalogMatch(
+    int fileId, int systemId, const QString &baseTitle, const QString &catalogGameId) {
+    if (fileId <= 0)
+        return false;
+    QSqlQuery query(m_db);
+    query.prepare(QStringLiteral(
+        "UPDATE files SET system_id = ?, "
+        "base_title = COALESCE(NULLIF(?, ''), base_title), "
+        "catalog_game_id = COALESCE(NULLIF(?, ''), catalog_game_id) "
+        "WHERE id = ?"));
+    query.addBindValue(systemId);
+    query.addBindValue(baseTitle);
+    query.addBindValue(catalogGameId);
+    query.addBindValue(fileId);
+    if (!query.exec()) {
+        logError("Failed to update catalog match fields: " + query.lastError().text());
+        return false;
+    }
+    return true;
+}
+
+bool Database::markFileBundled(int fileId, const QString &bundleOutputPath) {
+    if (fileId <= 0)
+        return false;
+    QSqlQuery query(m_db);
+    query.prepare(QStringLiteral(
+        "UPDATE files SET is_bundled = 1, bundle_output_path = ?, is_processed = 1, "
+        "processing_status = 'bundled' WHERE id = ?"));
+    query.addBindValue(bundleOutputPath);
+    query.addBindValue(fileId);
+    if (!query.exec()) {
+        logError("Failed to mark file bundled: " + query.lastError().text());
+        return false;
+    }
+    return true;
 }
 
 QList<FileRecord> Database::getFilesBySystem(const QString &systemName) {

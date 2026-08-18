@@ -198,6 +198,21 @@ public:
     QList<FileRecord> getFilesWithConfirmedMatch();
 
     /**
+     * @brief Confirmed matches with a catalog title — the organize/bundle work set.
+     */
+    QList<FileRecord> getFilesEligibleForOrganize();
+
+    /**
+     * @brief Persist catalog identity after a hash match.
+     */
+    bool updateFileCatalogMatch(int fileId, int systemId, const QString &baseTitle, const QString &catalogGameId);
+
+    /**
+     * @brief Record a successful bundle output path.
+     */
+    bool markFileBundled(int fileId, const QString &bundleOutputPath);
+
+    /**
      * @brief Get files by system name
      * @param systemName System name
      * @return List of file records

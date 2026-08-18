@@ -31,7 +31,7 @@ QList<FileRecord> Database::getFilesByDiscSetKey(const QString &discSetKey) {
                                  "system_id, crc32, md5, sha1, ra_md5, chd_sha1, rvz_sha1, hash_calculated, "
                                  "is_primary, parent_file_id, base_title, disc_set_key, disc_number, "
                                  "file_type, is_patched, patch_name, is_processed, processing_status, "
-                                 "last_modified, scanned_at "
+                                 "last_modified, scanned_at, catalog_game_id, is_bundled, bundle_output_path "
                                  "FROM files WHERE disc_set_key = ? AND is_primary = 1 "
                                  "ORDER BY disc_number, filename"));
     query.addBindValue(discSetKey);
@@ -73,6 +73,9 @@ QList<FileRecord> Database::getFilesByDiscSetKey(const QString &discSetKey) {
         r.processingStatus = query.value(27).toString();
         r.lastModified = query.value(28).toDateTime();
         r.scannedAt = query.value(29).toDateTime();
+        r.catalogGameId = query.value(30).toString();
+        r.isBundled = query.value(31).toBool();
+        r.bundleOutputPath = query.value(32).toString();
         if (r.id > 0)
             files.append(r);
     }
