@@ -25,8 +25,10 @@ public:
 
     explicit LibraryListModel(QObject *parent = nullptr)
         : QAbstractListModel(parent)
-        , m_libraryPath(QStandardPaths::writableLocation(QStandardPaths::AppDataLocation) + QStringLiteral("/library.db"))
-        , m_catalogPath(QStandardPaths::writableLocation(QStandardPaths::AppDataLocation) + QStringLiteral("/catalog.db"))
+        , m_libraryPath(
+              QStandardPaths::writableLocation(QStandardPaths::AppDataLocation) + QStringLiteral("/library.db"))
+        , m_catalogPath(
+              QStandardPaths::writableLocation(QStandardPaths::AppDataLocation) + QStringLiteral("/catalog.db"))
         , m_status(QStringLiteral("Ready")) {
         reload();
     }
@@ -49,7 +51,7 @@ public:
 
     QVariant data(const QModelIndex &index, int role) const override {
         if (!index.isValid() || index.row() < 0 || index.row() >= m_paths.size())
-            return { };
+            return {};
         switch (role) {
         case PathRole:
             return m_paths.at(index.row());
@@ -58,7 +60,7 @@ public:
         case CoverRole:
             return m_covers.at(index.row());
         default:
-            return { };
+            return {};
         }
     }
 
@@ -76,7 +78,7 @@ public:
         if (!result) {
             m_status = result.error();
             emit statusChanged();
-            return { };
+            return {};
         }
         m_status = QStringLiteral("Matched: %1").arg(result->title);
         emit statusChanged();
@@ -86,14 +88,14 @@ public:
 
     Q_INVOKABLE QString coverForRow(int row, bool online) {
         if (row < 0 || row >= m_gameIds.size())
-            return { };
+            return {};
         const QString gameId = m_gameIds.at(row);
         const QString cached = remustwo::cachedArtworkPath(gameId);
         if (!cached.isEmpty())
             return QUrl::fromLocalFile(cached).toString();
         const QString url = m_coverUrls.at(row);
         if (url.isEmpty())
-            return { };
+            return {};
         auto cachedResult = remustwo::cacheArtwork(QUrl(url), gameId, online);
         if (!cachedResult)
             return url;

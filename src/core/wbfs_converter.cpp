@@ -11,12 +11,14 @@ WBFSConverter::WBFSConverter(QObject *parent)
     , m_witPath("wit") { }
 
 bool WBFSConverter::isWitAvailable() const {
-    auto result = const_cast<WBFSConverter *>(this)->runProcess(findTool(m_witPath), QStringList() << "--version", 5000);
+    auto result
+        = const_cast<WBFSConverter *>(this)->runProcess(findTool(m_witPath), QStringList() << "--version", 5000);
     return result.started;
 }
 
 QString WBFSConverter::getWitVersion() const {
-    auto result = const_cast<WBFSConverter *>(this)->runProcess(findTool(m_witPath), QStringList() << "--version", 5000);
+    auto result
+        = const_cast<WBFSConverter *>(this)->runProcess(findTool(m_witPath), QStringList() << "--version", 5000);
     QString output = result.stdOutput.isEmpty() ? result.stdError : result.stdOutput;
     QStringList lines = output.split('\n');
     return lines.isEmpty() ? QString() : lines.first().trimmed();

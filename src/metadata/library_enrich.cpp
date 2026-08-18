@@ -16,31 +16,30 @@ namespace remustwo {
 
 namespace {
 
-QString cacheKeyForHashes(const QString &crc32, const QString &md5, const QString &sha1) {
-    const QString digest = !sha1.isEmpty() ? sha1 : (!md5.isEmpty() ? md5 : crc32);
-    return QStringLiteral("enrich:hasheous:%1").arg(digest.trimmed().toLower());
-}
+    QString cacheKeyForHashes(const QString &crc32, const QString &md5, const QString &sha1) {
+        const QString digest = !sha1.isEmpty() ? sha1 : (!md5.isEmpty() ? md5 : crc32);
+        return QStringLiteral("enrich:hasheous:%1").arg(digest.trimmed().toLower());
+    }
 
-bool isNegativeCached(QSqlDatabase &library, const QString &key) {
-    QSqlQuery query(library);
-    query.prepare(QStringLiteral(
-        "SELECT 1 FROM cache WHERE cache_key = ? AND (expiry IS NULL OR expiry > datetime('now')) LIMIT 1"));
-    query.addBindValue(key);
-    return query.exec() && query.next();
-}
+    bool isNegativeCached(QSqlDatabase &library, const QString &key) {
+        QSqlQuery query(library);
+        query.prepare(QStringLiteral(
+            "SELECT 1 FROM cache WHERE cache_key = ? AND (expiry IS NULL OR expiry > datetime('now')) LIMIT 1"));
+        query.addBindValue(key);
+        return query.exec() && query.next();
+    }
 
-void rememberMiss(QSqlDatabase &library, const QString &key) {
-    QSqlQuery query(library);
-    query.prepare(QStringLiteral(
-        "INSERT OR REPLACE INTO cache (cache_key, cache_value, created_at, expiry) "
-        "VALUES (?, 'miss', datetime('now'), datetime('now', '+30 days'))"));
-    query.addBindValue(key);
-    query.exec();
-}
+    void rememberMiss(QSqlDatabase &library, const QString &key) {
+        QSqlQuery query(library);
+        query.prepare(QStringLiteral("INSERT OR REPLACE INTO cache (cache_key, cache_value, created_at, expiry) "
+                                     "VALUES (?, 'miss', datetime('now'), datetime('now', '+30 days'))"));
+        query.addBindValue(key);
+        query.exec();
+    }
 
-bool needsEnrichment(const QString &coverUrl, const QString &description) {
-    return coverUrl.trimmed().isEmpty() || description.trimmed().isEmpty();
-}
+    bool needsEnrichment(const QString &coverUrl, const QString &description) {
+        return coverUrl.trimmed().isEmpty() || description.trimmed().isEmpty();
+    }
 
 } // namespace
 
@@ -52,10 +51,10 @@ Result<EnrichStats> enrichLibrary(
     }
 
     QSqlQuery owned(library.database());
-    if (!owned.exec(QStringLiteral(
-            "SELECT DISTINCT catalog_game_id, crc32, md5, sha1 FROM files "
-            "WHERE catalog_game_id IS NOT NULL AND TRIM(catalog_game_id) != '' "
-            "AND id IN (SELECT file_id FROM matches WHERE is_confirmed = 1 AND is_rejected = 0)"))) {
+    if (!owned.exec(
+            QStringLiteral("SELECT DISTINCT catalog_game_id, crc32, md5, sha1 FROM files "
+                           "WHERE catalog_game_id IS NOT NULL AND TRIM(catalog_game_id) != '' "
+                           "AND id IN (SELECT file_id FROM matches WHERE is_confirmed = 1 AND is_rejected = 0)"))) {
         return Result<EnrichStats>::fail(owned.lastError().text());
     }
 
@@ -92,16 +91,15 @@ Result<EnrichStats> enrichLibrary(
     EnrichStats stats;
     stats.matchedGames = ownedGames.size();
     HasheousProvider provider;
-    auto lookup = options.lookup ? options.lookup
-                                 : [&](const QString &crc, const QString &md5, const QString &sha1) {
-                                       return provider.lookupByHashes(crc, md5, sha1);
-                                   };
+    auto lookup = options.lookup ? options.lookup : [&](const QString &crc, const QString &md5, const QString &sha1) {
+        return provider.lookupByHashes(crc, md5, sha1);
+    };
 
     for (const OwnedGame &ownedGame : ownedGames) {
         QSqlQuery gameQuery(catalog);
-        gameQuery.prepare(QStringLiteral(
-            "SELECT g.cover_url, g.description, g.canonical_title, s.display_name "
-            "FROM games g LEFT JOIN systems s ON s.system_id = g.system_id WHERE g.game_id = ?"));
+        gameQuery.prepare(
+            QStringLiteral("SELECT g.cover_url, g.description, g.canonical_title, s.display_name "
+                           "FROM games g LEFT JOIN systems s ON s.system_id = g.system_id WHERE g.game_id = ?"));
         gameQuery.addBindValue(ownedGame.gameId);
         if (!gameQuery.exec() || !gameQuery.next())
             continue;
@@ -157,11 +155,10 @@ Result<EnrichStats> enrichLibrary(
         }
 
         QSqlQuery update(catalog);
-        update.prepare(QStringLiteral(
-            "UPDATE games SET "
-            "cover_url = COALESCE(NULLIF(cover_url, ''), ?), "
-            "description = COALESCE(NULLIF(description, ''), ?) "
-            "WHERE game_id = ?"));
+        update.prepare(QStringLiteral("UPDATE games SET "
+                                      "cover_url = COALESCE(NULLIF(cover_url, ''), ?), "
+                                      "description = COALESCE(NULLIF(description, ''), ?) "
+                                      "WHERE game_id = ?"));
         update.addBindValue(metadata.boxArtUrl);
         update.addBindValue(metadata.description);
         update.addBindValue(ownedGame.gameId);

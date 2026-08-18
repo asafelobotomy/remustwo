@@ -9,7 +9,7 @@ ArchiveExtractor::ArchiveExtractor(QObject *parent)
     : QObject(parent) { }
 
 QMap<ArchiveFormat, bool> ArchiveExtractor::getAvailableTools() const {
-    return { };
+    return {};
 }
 
 bool ArchiveExtractor::canExtract(ArchiveFormat format) const {
@@ -60,15 +60,15 @@ QString ArchiveExtractor::normalizeArchiveMemberPath(const QString &path) {
     QString normalized = QDir::fromNativeSeparators(path.trimmed());
     normalized.replace(QLatin1Char('\\'), QLatin1Char('/'));
     if (normalized.isEmpty() || normalized.startsWith(QLatin1Char('/')))
-        return { };
+        return {};
     while (normalized.startsWith(QStringLiteral("./")))
         normalized.remove(0, 2);
     if (normalized.isEmpty() || normalized == QLatin1Char('.'))
-        return { };
+        return {};
     const QStringList parts = normalized.split(QLatin1Char('/'));
     for (const QString &part : parts) {
         if (part == QStringLiteral(".."))
-            return { };
+            return {};
     }
     return normalized;
 }
@@ -77,7 +77,8 @@ QString ArchiveExtractor::normalizeArchiveMemberPath(const QString &path) {
 ExtractionResult ArchiveExtractor::extract(const QString &archivePath, const QString &, bool) {
     ExtractionResult result;
     result.archivePath = archivePath;
-    result.error = QStringLiteral("Archive extraction requires libarchive (build with -DREMUSTWO_ENABLE_LIBARCHIVE=ON)");
+    result.error
+        = QStringLiteral("Archive extraction requires libarchive (build with -DREMUSTWO_ENABLE_LIBARCHIVE=ON)");
     return result;
 }
 
@@ -86,11 +87,11 @@ ExtractionResult ArchiveExtractor::extractFile(const QString &archivePath, const
 }
 
 QList<ExtractionResult> ArchiveExtractor::batchExtract(const QStringList &, const QString &, bool) {
-    return { };
+    return {};
 }
 
 QByteArray ArchiveExtractor::readMemberPrefix(const QString &, const QString &, qint64) {
-    return { };
+    return {};
 }
 
 ExtractionResult ArchiveExtractor::extractToDir(const QString &archivePath, const QString &, const QString &) {

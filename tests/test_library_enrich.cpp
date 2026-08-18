@@ -21,8 +21,8 @@ class LibraryEnrichTest : public QObject {
 
 private slots:
     void lookupJsonContainsHashes() {
-        const QByteArray body = HasheousProvider::lookupJson(
-            QStringLiteral("8a27668c"), QStringLiteral("5c5efc5cad24167b91d06ed3dc6bf524"),
+        const QByteArray body = HasheousProvider::lookupJson(QStringLiteral("8a27668c"),
+            QStringLiteral("5c5efc5cad24167b91d06ed3dc6bf524"),
             QStringLiteral("b5c6db56d69f455f4dfa8800d0ce4a7b7f183dd6"));
         QVERIFY(!body.isEmpty());
         const QJsonDocument doc = QJsonDocument::fromJson(body);
@@ -30,8 +30,8 @@ private slots:
         QCOMPARE(doc.array().size(), 1);
         const QJsonObject entry = doc.array().first().toObject();
         QCOMPARE(entry.value(QStringLiteral("mD5")).toString(), QStringLiteral("5c5efc5cad24167b91d06ed3dc6bf524"));
-        QCOMPARE(entry.value(QStringLiteral("shA1")).toString(),
-            QStringLiteral("b5c6db56d69f455f4dfa8800d0ce4a7b7f183dd6"));
+        QCOMPARE(
+            entry.value(QStringLiteral("shA1")).toString(), QStringLiteral("b5c6db56d69f455f4dfa8800d0ce4a7b7f183dd6"));
     }
 
     void enrichOnlyMatchedLibraryGames() {
@@ -51,9 +51,9 @@ private slots:
             QVERIFY(catalogResult);
             QSqlDatabase extraDb = *catalogResult;
             QSqlQuery extra(extraDb);
-            QVERIFY(extra.exec(QStringLiteral(
-                "INSERT INTO games (game_id, system_id, canonical_title, canonical_confidence) "
-                "VALUES ('unowned-game', 1, 'Unowned Title', 1.0)")));
+            QVERIFY(extra.exec(
+                QStringLiteral("INSERT INTO games (game_id, system_id, canonical_title, canonical_confidence) "
+                               "VALUES ('unowned-game', 1, 'Unowned Title', 1.0)")));
             extra.prepare(QStringLiteral(
                 "INSERT INTO game_signatures (game_id, hash_type, hash_value, source_id, confidence, is_primary) "
                 "VALUES ('unowned-game', 'md5', 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa', "

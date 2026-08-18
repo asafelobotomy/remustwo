@@ -38,8 +38,7 @@ void ExternalToolRunnerTest::findToolHonorsRemustwoToolPath() {
     QVERIFY(tool.open(QIODevice::WriteOnly));
     QVERIFY(tool.write("#!/bin/sh\nexit 0\n") > 0);
     tool.close();
-    QVERIFY(QFile::setPermissions(toolPath,
-        QFileDevice::ReadOwner | QFileDevice::WriteOwner | QFileDevice::ExeOwner));
+    QVERIFY(QFile::setPermissions(toolPath, QFileDevice::ReadOwner | QFileDevice::WriteOwner | QFileDevice::ExeOwner));
 
     const QByteArray previous = qgetenv("REMUSTWO_TOOL_PATH");
     qputenv("REMUSTWO_TOOL_PATH", QFile::encodeName(dir.path()));

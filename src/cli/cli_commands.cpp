@@ -30,458 +30,459 @@ namespace remustwo::cli {
 
 namespace {
 
-int printError(const QString &message) {
-    QTextStream(stderr) << message << '\n';
-    return 1;
-}
+    int printError(const QString &message) {
+        QTextStream(stderr) << message << '\n';
+        return 1;
+    }
 
-int cmdHash(const QStringList &args, bool json) {
-    if (args.isEmpty()) {
-        return printError(QStringLiteral("hash: missing PATH"));
-    }
-    Hasher hasher;
-    const HashResult result = hasher.calculateHashes(args.at(0));
-    if (!result.success) {
-        return printError(result.error);
-    }
-    if (json) {
-        QJsonObject obj;
-        obj.insert(QStringLiteral("crc32"), result.crc32);
-        obj.insert(QStringLiteral("md5"), result.md5);
-        obj.insert(QStringLiteral("sha1"), result.sha1);
-        QTextStream(stdout) << QJsonDocument(obj).toJson(QJsonDocument::Compact) << '\n';
-    } else {
-        QTextStream(stdout) << result.crc32 << ' ' << result.md5 << ' ' << result.sha1 << '\n';
-    }
-    return 0;
-}
-
-QString catalogDbPath(const QCommandLineParser &parser) {
-    if (!parser.value(QStringLiteral("catalog-db")).isEmpty()) {
-        return parser.value(QStringLiteral("catalog-db"));
-    }
-    if (!parser.value(QStringLiteral("db")).isEmpty()) {
-        return parser.value(QStringLiteral("db"));
-    }
-    return defaultCatalogPath();
-}
-
-QString libraryDbPath(const QCommandLineParser &parser) {
-    return parser.value(QStringLiteral("library-db")).isEmpty() ? defaultLibraryPath()
-                                                               : parser.value(QStringLiteral("library-db"));
-}
-
-int cmdCatalogInit(const QCommandLineParser &parser, bool json) {
-    const QString dbPath = catalogDbPath(parser);
-    auto result = catalog::init(dbPath);
-    if (!result) {
-        return printError(result.error());
-    }
-    if (json) {
-        QJsonObject obj;
-        obj.insert(QStringLiteral("status"), QStringLiteral("ok"));
-        obj.insert(QStringLiteral("catalog"), dbPath);
-        obj.insert(QStringLiteral("note"), QStringLiteral("Schema only — cannot match until catalog ingest"));
-        QTextStream(stdout) << QJsonDocument(obj).toJson(QJsonDocument::Compact) << '\n';
-    } else {
-        QTextStream(stdout) << "Catalog initialized: " << dbPath << '\n';
-        QTextStream(stdout) << "Note: init creates schema only. Run 'catalog ingest' before match.\n";
-    }
-    return 0;
-}
-
-int cmdCatalogImportHasheous(const QStringList &args, const QCommandLineParser &parser, bool json) {
-    if (args.isEmpty()) {
-        return printError(QStringLiteral("catalog import-hasheous: missing JSON"));
-    }
-    auto result = importHasheousJson(catalogDbPath(parser), args.at(0));
-    if (!result) {
-        return printError(result.error());
-    }
-    if (json) {
-        QJsonObject obj;
-        obj.insert(QStringLiteral("status"), QStringLiteral("ok"));
-        obj.insert(QStringLiteral("updated"), *result);
-        QTextStream(stdout) << QJsonDocument(obj).toJson(QJsonDocument::Compact) << '\n';
-    } else {
-        QTextStream(stdout) << "Updated " << *result << " game(s) from Hasheous JSON\n";
-    }
-    return 0;
-}
-
-int cmdCatalogEnrich() {
-    return printError(QStringLiteral("catalog enrich was removed. Run 'enrich' after match."));
-}
-
-int cmdEnrich(const QCommandLineParser &parser, bool json) {
-    EnrichOptions options;
-    options.online = parser.isSet(QStringLiteral("online"));
-    options.dryRun = parser.isSet(QStringLiteral("dry-run"));
-    auto result = enrichLibrary(catalogDbPath(parser), libraryDbPath(parser), options);
-    if (!result) {
-        return printError(result.error());
-    }
-    if (json) {
-        QJsonObject obj;
-        obj.insert(QStringLiteral("matched_games"), result->matchedGames);
-        obj.insert(QStringLiteral("complete"), result->complete);
-        obj.insert(QStringLiteral("negative_cached"), result->negativeCached);
-        obj.insert(QStringLiteral("would_fetch"), result->wouldFetch);
-        obj.insert(QStringLiteral("fetched"), result->fetched);
-        obj.insert(QStringLiteral("updated"), result->updated);
-        obj.insert(QStringLiteral("thumbnail_urls"), result->thumbnailUrls);
-        obj.insert(QStringLiteral("dry_run"), options.dryRun);
-        obj.insert(QStringLiteral("online"), options.online);
-        QTextStream(stdout) << QJsonDocument(obj).toJson(QJsonDocument::Compact) << '\n';
-    } else {
-        QTextStream(stdout) << (options.dryRun ? QStringLiteral("would_fetch ") : QStringLiteral("fetched "))
-                            << (options.dryRun ? result->wouldFetch : result->fetched) << " of "
-                            << result->matchedGames << " matched (" << result->complete << " complete, "
-                            << result->negativeCached << " negative-cached)\n";
-    }
-    return 0;
-}
-
-int cmdCatalogIngest(const QStringList &args, const QCommandLineParser &parser, bool json) {
-    if (args.isEmpty()) {
-        return printError(QStringLiteral("catalog ingest: missing DAT"));
-    }
-    auto result = catalog::ingestDat(catalogDbPath(parser), args.at(0));
-    if (!result) {
-        return printError(result.error());
-    }
-    if (json) {
-        QJsonObject obj;
-        obj.insert(QStringLiteral("status"), QStringLiteral("ok"));
-        obj.insert(QStringLiteral("dat"), args.at(0));
-        QTextStream(stdout) << QJsonDocument(obj).toJson(QJsonDocument::Compact) << '\n';
-    } else {
-        QTextStream(stdout) << "Ingested " << args.at(0) << '\n';
-    }
-    return 0;
-}
-
-int cmdScan(const QStringList &args, const QCommandLineParser &parser, bool json) {
-    if (args.isEmpty()) {
-        return printError(QStringLiteral("scan: missing DIR"));
-    }
-    const QString scanPath = args.at(0);
-    const QFileInfo scanInfo(scanPath);
-    if (!scanInfo.exists() || !scanInfo.isDir()) {
-        return printError(QStringLiteral("scan: PATH must be a directory"));
-    }
-    const QString libraryPath = libraryDbPath(parser);
-
-    Scanner scanner;
-    scanner.setArchiveScanning(false);
-    scanner.setExtensions(::remustwo::Constants::Systems::EXTENSION_TO_SYSTEMS.keys());
-    const QList<ScanResult> results = scanner.scan(scanPath);
-
-    Database db;
-    if (!db.initialize(libraryPath)) {
-        return printError(QStringLiteral("Failed to open library database"));
-    }
-    const int libraryId = db.insertLibrary(scanPath, QStringLiteral("scan"));
-    Hasher hasher;
-    int stored = 0;
-    int hashed = 0;
-    for (const ScanResult &item : results) {
-        FileRecord record;
-        record.libraryId = libraryId;
-        record.originalPath = item.path;
-        record.currentPath = item.path;
-        record.filename = item.filename;
-        record.extension = item.extension;
-        record.fileSize = item.fileSize;
-        record.lastModified = item.lastModified;
-        const int fileId = db.insertFile(record);
-        if (fileId <= 0) {
-            continue;
+    int cmdHash(const QStringList &args, bool json) {
+        if (args.isEmpty()) {
+            return printError(QStringLiteral("hash: missing PATH"));
         }
-        ++stored;
-        const HashResult hashes = hasher.calculateHashes(item.path);
-        if (hashes.success && db.updateFileHashes(fileId, hashes.crc32, hashes.md5, hashes.sha1)) {
-            ++hashed;
+        Hasher hasher;
+        const HashResult result = hasher.calculateHashes(args.at(0));
+        if (!result.success) {
+            return printError(result.error);
         }
+        if (json) {
+            QJsonObject obj;
+            obj.insert(QStringLiteral("crc32"), result.crc32);
+            obj.insert(QStringLiteral("md5"), result.md5);
+            obj.insert(QStringLiteral("sha1"), result.sha1);
+            QTextStream(stdout) << QJsonDocument(obj).toJson(QJsonDocument::Compact) << '\n';
+        } else {
+            QTextStream(stdout) << result.crc32 << ' ' << result.md5 << ' ' << result.sha1 << '\n';
+        }
+        return 0;
     }
 
-    if (json) {
-        QJsonObject obj;
-        obj.insert(QStringLiteral("scanned"), results.size());
-        obj.insert(QStringLiteral("stored"), stored);
-        obj.insert(QStringLiteral("hashed"), hashed);
-        obj.insert(QStringLiteral("library"), libraryPath);
-        QTextStream(stdout) << QJsonDocument(obj).toJson(QJsonDocument::Compact) << '\n';
-    } else {
-        QTextStream(stdout) << "Scanned " << results.size() << " file(s), stored " << stored << ", hashed " << hashed
-                            << '\n';
+    QString catalogDbPath(const QCommandLineParser &parser) {
+        if (!parser.value(QStringLiteral("catalog-db")).isEmpty()) {
+            return parser.value(QStringLiteral("catalog-db"));
+        }
+        if (!parser.value(QStringLiteral("db")).isEmpty()) {
+            return parser.value(QStringLiteral("db"));
+        }
+        return defaultCatalogPath();
     }
-    return 0;
-}
 
-int cmdMatch(const QStringList &args, const QCommandLineParser &parser, bool json) {
-    const QString catalogPath = catalogDbPath(parser);
-    const QString libraryPath = libraryDbPath(parser);
+    QString libraryDbPath(const QCommandLineParser &parser) {
+        return parser.value(QStringLiteral("library-db")).isEmpty() ? defaultLibraryPath()
+                                                                    : parser.value(QStringLiteral("library-db"));
+    }
 
-    if (args.isEmpty()) {
-        auto result = catalog::matchLibrary(catalogPath, libraryPath);
+    int cmdCatalogInit(const QCommandLineParser &parser, bool json) {
+        const QString dbPath = catalogDbPath(parser);
+        auto result = catalog::init(dbPath);
         if (!result) {
             return printError(result.error());
         }
         if (json) {
             QJsonObject obj;
-            obj.insert(QStringLiteral("matched"), *result);
-            obj.insert(QStringLiteral("catalog"), catalogPath);
-            obj.insert(QStringLiteral("library"), libraryPath);
+            obj.insert(QStringLiteral("status"), QStringLiteral("ok"));
+            obj.insert(QStringLiteral("catalog"), dbPath);
+            obj.insert(QStringLiteral("note"), QStringLiteral("Schema only — cannot match until catalog ingest"));
             QTextStream(stdout) << QJsonDocument(obj).toJson(QJsonDocument::Compact) << '\n';
         } else {
-            QTextStream(stdout) << "Matched " << *result << " library file(s)\n";
+            QTextStream(stdout) << "Catalog initialized: " << dbPath << '\n';
+            QTextStream(stdout) << "Note: init creates schema only. Run 'catalog ingest' before match.\n";
         }
         return 0;
     }
 
-    const QFileInfo pathInfo(args.at(0));
-    if (pathInfo.isDir()) {
-        return printError(QStringLiteral("match: PATH is a directory. Run 'scan DIR' then 'match' with no PATH."));
-    }
-
-    auto result = catalog::matchFile(catalogPath, args.at(0), libraryPath);
-    if (!result) {
-        return printError(result.error());
-    }
-    if (json) {
-        QJsonObject obj;
-        obj.insert(QStringLiteral("game_id"), result->gameId);
-        obj.insert(QStringLiteral("title"), result->title);
-        obj.insert(QStringLiteral("confidence"), result->confidence);
-        obj.insert(QStringLiteral("hash"), result->matchedHash);
-        QTextStream(stdout) << QJsonDocument(obj).toJson(QJsonDocument::Compact) << '\n';
-    } else {
-        QTextStream(stdout) << result->title << " (" << result->confidence << "%)\n";
-    }
-    return 0;
-}
-
-int cmdOrganize(const QStringList &args, const QCommandLineParser &parser, bool json) {
-    if (args.isEmpty()) {
-        return printError(QStringLiteral("organize: missing DEST"));
-    }
-    const QString dest = args.at(0);
-    const bool dryRun = parser.isSet(QStringLiteral("dry-run"));
-    const QString libraryPath = libraryDbPath(parser);
-    const QString catalogPath = catalogDbPath(parser);
-
-    Database db;
-    if (!db.initialize(libraryPath)) {
-        return printError(QStringLiteral("Failed to open library database"));
-    }
-    db.setCompendiumDbPath(catalogPath);
-
-    const bool bundle = parser.isSet(QStringLiteral("bundle"));
-    const bool includeArt = parser.isSet(QStringLiteral("include-art"));
-    const QString convertMode = parser.value(QStringLiteral("convert")).toLower();
-    if (!convertMode.isEmpty() && convertMode != QStringLiteral("auto") && convertMode != QStringLiteral("never")) {
-        return printError(QStringLiteral("organize: --convert must be auto or never"));
-    }
-
-    const auto files = db.getFilesEligibleForOrganize();
-    const int skippedUnmatched = db.getAllFiles().size() - files.size();
-    QList<int> fileIds;
-    QMap<int, GameMetadata> metadataMap;
-    for (const FileRecord &file : files) {
-        fileIds.append(file.id);
-        GameMetadata meta;
-        meta.title = file.baseTitle;
-        meta.system = db.getSystemDisplayName(file.systemId);
-        metadataMap.insert(file.id, meta);
-    }
-
-    int ok = 0;
-    int failed = 0;
-    int skipped = 0;
-    QSet<int> organizedIds;
-    QStringList plannedEntries;
-
-    if (bundle) {
-        RomBundler bundler(db);
-        BundleConfig config;
-        config.dryRun = dryRun;
-        config.includeArt = includeArt;
-        config.convert = convertMode == QStringLiteral("never") ? BundleConvertMode::Never : BundleConvertMode::Auto;
-        for (const FileRecord &file : files) {
-            if (includeArt)
-                config.artworkPath = cachedArtworkPath(file.catalogGameId);
-            else
-                config.artworkPath.clear();
-            const BundleResult bundled = bundler.bundle(file, metadataMap.value(file.id), dest, config);
-            if (bundled.skippedAlreadyBundled || bundled.skippedDiscSet) {
-                ++skipped;
-                if (bundled.skippedDiscSet)
-                    organizedIds.insert(file.id);
-                continue;
-            }
-            if (!bundled.success) {
-                ++failed;
-                continue;
-            }
-            ++ok;
-            organizedIds.insert(file.id);
-            plannedEntries.append(bundled.archiveEntries);
+    int cmdCatalogImportHasheous(const QStringList &args, const QCommandLineParser &parser, bool json) {
+        if (args.isEmpty()) {
+            return printError(QStringLiteral("catalog import-hasheous: missing JSON"));
         }
-    } else {
-        OrganizeEngine engine(db);
-        engine.setDryRun(dryRun);
-        engine.setTemplate(TemplateEngine::getNoIntroTemplate());
-        const QList<OrganizeResult> results = engine.organizeFiles(fileIds, metadataMap, dest, FileOperation::Move);
-        for (const OrganizeResult &result : results) {
-            if (result.success)
-                ++ok;
-            else
-                ++failed;
+        auto result = importHasheousJson(catalogDbPath(parser), args.at(0));
+        if (!result) {
+            return printError(result.error());
         }
-        for (int fileId : fileIds)
-            organizedIds.insert(fileId);
-    }
-
-    int playlists = 0;
-    if (!dryRun && failed == 0 && !organizedIds.isEmpty()) {
-        M3UGenerator playlistsEngine(db);
-        playlists = playlistsEngine.generateAll(organizedIds, dest);
-    }
-
-    if (json) {
-        QJsonObject obj;
-        obj.insert(QStringLiteral("dest"), dest);
-        obj.insert(QStringLiteral("dry_run"), dryRun);
-        obj.insert(QStringLiteral("organized"), ok);
-        obj.insert(QStringLiteral("failed"), failed);
-        obj.insert(QStringLiteral("skipped_unmatched"), skippedUnmatched);
-        obj.insert(QStringLiteral("playlists"), playlists);
-        obj.insert(QStringLiteral("skipped"), skipped);
-        obj.insert(QStringLiteral("bundle"), bundle);
-        if (!plannedEntries.isEmpty()) {
-            QJsonArray entries;
-            for (const QString &entry : plannedEntries)
-                entries.append(entry);
-            obj.insert(QStringLiteral("archive_entries"), entries);
-        }
-        obj.insert(QStringLiteral("status"), failed == 0 ? QStringLiteral("ok") : QStringLiteral("partial"));
-        QTextStream(stdout) << QJsonDocument(obj).toJson(QJsonDocument::Compact) << '\n';
-    } else {
-        QTextStream(stdout) << (dryRun ? "[dry-run] " : "") << "organized " << ok << " file(s) into " << dest;
-        if (skippedUnmatched > 0)
-            QTextStream(stdout) << " (" << skippedUnmatched << " unmatched skipped)";
-        if (playlists > 0)
-            QTextStream(stdout) << ", " << playlists << " playlist(s)";
-        if (failed > 0)
-            QTextStream(stdout) << " (" << failed << " failed)";
-        QTextStream(stdout) << '\n';
-    }
-    return failed > 0 ? 1 : 0;
-}
-
-int cmdVerify(const QCommandLineParser &parser, bool json) {
-    const QString libraryPath = libraryDbPath(parser);
-    const QString catalogPath = catalogDbPath(parser);
-
-    Database db;
-    if (!db.initialize(libraryPath)) {
         if (json) {
             QJsonObject obj;
             obj.insert(QStringLiteral("status"), QStringLiteral("ok"));
-            obj.insert(QStringLiteral("files"), 0);
+            obj.insert(QStringLiteral("updated"), *result);
             QTextStream(stdout) << QJsonDocument(obj).toJson(QJsonDocument::Compact) << '\n';
         } else {
-            QTextStream(stdout) << "verify: no library database yet (ok)\n";
+            QTextStream(stdout) << "Updated " << *result << " game(s) from Hasheous JSON\n";
         }
         return 0;
     }
 
-    VerificationEngine engine(&db);
-    engine.setCompendiumDb(catalogPath);
-    const QList<VerificationResult> results = engine.verifyLibrary();
-    const VerificationSummary summary = engine.getLastSummary();
-
-    if (json) {
-        QJsonObject obj;
-        obj.insert(QStringLiteral("status"), QStringLiteral("ok"));
-        obj.insert(QStringLiteral("total"), summary.totalFiles);
-        obj.insert(QStringLiteral("verified"), summary.verified);
-        obj.insert(QStringLiteral("mismatched"), summary.mismatched);
-        obj.insert(QStringLiteral("not_in_dat"), summary.notInDat);
-        obj.insert(QStringLiteral("no_hash"), summary.noHash);
-        obj.insert(QStringLiteral("corrupt"), summary.corrupt);
-        obj.insert(QStringLiteral("results"), static_cast<int>(results.size()));
-        QTextStream(stdout) << QJsonDocument(obj).toJson(QJsonDocument::Compact) << '\n';
-    } else {
-        QTextStream(stdout) << "verify: " << summary.totalFiles << " file(s), " << summary.verified << " verified, "
-                            << summary.mismatched << " mismatched\n";
-    }
-    return 0;
-}
-
-int cmdList(const QCommandLineParser &parser, bool json) {
-    const QString dbPath = libraryDbPath(parser);
-
-    Database db;
-    if (!db.initialize(dbPath)) {
-        return printError(QStringLiteral("Failed to open library database"));
+    int cmdCatalogEnrich() {
+        return printError(QStringLiteral("catalog enrich was removed. Run 'enrich' after match."));
     }
 
-    const auto files = db.getAllFiles();
-    if (json) {
-        QJsonArray arr;
-        for (const FileRecord &file : files) {
+    int cmdEnrich(const QCommandLineParser &parser, bool json) {
+        EnrichOptions options;
+        options.online = parser.isSet(QStringLiteral("online"));
+        options.dryRun = parser.isSet(QStringLiteral("dry-run"));
+        auto result = enrichLibrary(catalogDbPath(parser), libraryDbPath(parser), options);
+        if (!result) {
+            return printError(result.error());
+        }
+        if (json) {
             QJsonObject obj;
-            obj.insert(QStringLiteral("path"), file.currentPath);
-            obj.insert(QStringLiteral("filename"), file.filename);
-            arr.append(obj);
+            obj.insert(QStringLiteral("matched_games"), result->matchedGames);
+            obj.insert(QStringLiteral("complete"), result->complete);
+            obj.insert(QStringLiteral("negative_cached"), result->negativeCached);
+            obj.insert(QStringLiteral("would_fetch"), result->wouldFetch);
+            obj.insert(QStringLiteral("fetched"), result->fetched);
+            obj.insert(QStringLiteral("updated"), result->updated);
+            obj.insert(QStringLiteral("thumbnail_urls"), result->thumbnailUrls);
+            obj.insert(QStringLiteral("dry_run"), options.dryRun);
+            obj.insert(QStringLiteral("online"), options.online);
+            QTextStream(stdout) << QJsonDocument(obj).toJson(QJsonDocument::Compact) << '\n';
+        } else {
+            QTextStream(stdout) << (options.dryRun ? QStringLiteral("would_fetch ") : QStringLiteral("fetched "))
+                                << (options.dryRun ? result->wouldFetch : result->fetched) << " of "
+                                << result->matchedGames << " matched (" << result->complete << " complete, "
+                                << result->negativeCached << " negative-cached)\n";
         }
-        QJsonObject root;
-        root.insert(QStringLiteral("files"), arr);
-        QTextStream(stdout) << QJsonDocument(root).toJson(QJsonDocument::Compact) << '\n';
-    } else {
+        return 0;
+    }
+
+    int cmdCatalogIngest(const QStringList &args, const QCommandLineParser &parser, bool json) {
+        if (args.isEmpty()) {
+            return printError(QStringLiteral("catalog ingest: missing DAT"));
+        }
+        auto result = catalog::ingestDat(catalogDbPath(parser), args.at(0));
+        if (!result) {
+            return printError(result.error());
+        }
+        if (json) {
+            QJsonObject obj;
+            obj.insert(QStringLiteral("status"), QStringLiteral("ok"));
+            obj.insert(QStringLiteral("dat"), args.at(0));
+            QTextStream(stdout) << QJsonDocument(obj).toJson(QJsonDocument::Compact) << '\n';
+        } else {
+            QTextStream(stdout) << "Ingested " << args.at(0) << '\n';
+        }
+        return 0;
+    }
+
+    int cmdScan(const QStringList &args, const QCommandLineParser &parser, bool json) {
+        if (args.isEmpty()) {
+            return printError(QStringLiteral("scan: missing DIR"));
+        }
+        const QString scanPath = args.at(0);
+        const QFileInfo scanInfo(scanPath);
+        if (!scanInfo.exists() || !scanInfo.isDir()) {
+            return printError(QStringLiteral("scan: PATH must be a directory"));
+        }
+        const QString libraryPath = libraryDbPath(parser);
+
+        Scanner scanner;
+        scanner.setArchiveScanning(false);
+        scanner.setExtensions(::remustwo::Constants::Systems::EXTENSION_TO_SYSTEMS.keys());
+        const QList<ScanResult> results = scanner.scan(scanPath);
+
+        Database db;
+        if (!db.initialize(libraryPath)) {
+            return printError(QStringLiteral("Failed to open library database"));
+        }
+        const int libraryId = db.insertLibrary(scanPath, QStringLiteral("scan"));
+        Hasher hasher;
+        int stored = 0;
+        int hashed = 0;
+        for (const ScanResult &item : results) {
+            FileRecord record;
+            record.libraryId = libraryId;
+            record.originalPath = item.path;
+            record.currentPath = item.path;
+            record.filename = item.filename;
+            record.extension = item.extension;
+            record.fileSize = item.fileSize;
+            record.lastModified = item.lastModified;
+            const int fileId = db.insertFile(record);
+            if (fileId <= 0) {
+                continue;
+            }
+            ++stored;
+            const HashResult hashes = hasher.calculateHashes(item.path);
+            if (hashes.success && db.updateFileHashes(fileId, hashes.crc32, hashes.md5, hashes.sha1)) {
+                ++hashed;
+            }
+        }
+
+        if (json) {
+            QJsonObject obj;
+            obj.insert(QStringLiteral("scanned"), results.size());
+            obj.insert(QStringLiteral("stored"), stored);
+            obj.insert(QStringLiteral("hashed"), hashed);
+            obj.insert(QStringLiteral("library"), libraryPath);
+            QTextStream(stdout) << QJsonDocument(obj).toJson(QJsonDocument::Compact) << '\n';
+        } else {
+            QTextStream(stdout) << "Scanned " << results.size() << " file(s), stored " << stored << ", hashed "
+                                << hashed << '\n';
+        }
+        return 0;
+    }
+
+    int cmdMatch(const QStringList &args, const QCommandLineParser &parser, bool json) {
+        const QString catalogPath = catalogDbPath(parser);
+        const QString libraryPath = libraryDbPath(parser);
+
+        if (args.isEmpty()) {
+            auto result = catalog::matchLibrary(catalogPath, libraryPath);
+            if (!result) {
+                return printError(result.error());
+            }
+            if (json) {
+                QJsonObject obj;
+                obj.insert(QStringLiteral("matched"), *result);
+                obj.insert(QStringLiteral("catalog"), catalogPath);
+                obj.insert(QStringLiteral("library"), libraryPath);
+                QTextStream(stdout) << QJsonDocument(obj).toJson(QJsonDocument::Compact) << '\n';
+            } else {
+                QTextStream(stdout) << "Matched " << *result << " library file(s)\n";
+            }
+            return 0;
+        }
+
+        const QFileInfo pathInfo(args.at(0));
+        if (pathInfo.isDir()) {
+            return printError(QStringLiteral("match: PATH is a directory. Run 'scan DIR' then 'match' with no PATH."));
+        }
+
+        auto result = catalog::matchFile(catalogPath, args.at(0), libraryPath);
+        if (!result) {
+            return printError(result.error());
+        }
+        if (json) {
+            QJsonObject obj;
+            obj.insert(QStringLiteral("game_id"), result->gameId);
+            obj.insert(QStringLiteral("title"), result->title);
+            obj.insert(QStringLiteral("confidence"), result->confidence);
+            obj.insert(QStringLiteral("hash"), result->matchedHash);
+            QTextStream(stdout) << QJsonDocument(obj).toJson(QJsonDocument::Compact) << '\n';
+        } else {
+            QTextStream(stdout) << result->title << " (" << result->confidence << "%)\n";
+        }
+        return 0;
+    }
+
+    int cmdOrganize(const QStringList &args, const QCommandLineParser &parser, bool json) {
+        if (args.isEmpty()) {
+            return printError(QStringLiteral("organize: missing DEST"));
+        }
+        const QString dest = args.at(0);
+        const bool dryRun = parser.isSet(QStringLiteral("dry-run"));
+        const QString libraryPath = libraryDbPath(parser);
+        const QString catalogPath = catalogDbPath(parser);
+
+        Database db;
+        if (!db.initialize(libraryPath)) {
+            return printError(QStringLiteral("Failed to open library database"));
+        }
+        db.setCompendiumDbPath(catalogPath);
+
+        const bool bundle = parser.isSet(QStringLiteral("bundle"));
+        const bool includeArt = parser.isSet(QStringLiteral("include-art"));
+        const QString convertMode = parser.value(QStringLiteral("convert")).toLower();
+        if (!convertMode.isEmpty() && convertMode != QStringLiteral("auto") && convertMode != QStringLiteral("never")) {
+            return printError(QStringLiteral("organize: --convert must be auto or never"));
+        }
+
+        const auto files = db.getFilesEligibleForOrganize();
+        const int skippedUnmatched = db.getAllFiles().size() - files.size();
+        QList<int> fileIds;
+        QMap<int, GameMetadata> metadataMap;
         for (const FileRecord &file : files) {
-            QTextStream(stdout) << file.currentPath << '\n';
+            fileIds.append(file.id);
+            GameMetadata meta;
+            meta.title = file.baseTitle;
+            meta.system = db.getSystemDisplayName(file.systemId);
+            metadataMap.insert(file.id, meta);
         }
-    }
-    return 0;
-}
 
-void printRootHelp() {
-    QTextStream out(stdout);
-    out << "Usage: remustwo <command> [args]\n\n";
-    out << "Catalog (DAT reference — ingest before you can match):\n";
-    out << "  catalog init [--db PATH]              Create schema only\n";
-    out << "  catalog ingest DAT [--db PATH]        Load a No-Intro/Redump DAT\n";
-    out << "  catalog import-hasheous JSON          Optional cover URLs from JSON\n\n";
-    out << "Library (your files — scan, then match):\n";
-    out << "  scan DIR [--library-db PATH]          Find ROM files, hash, store\n";
-    out << "  match [FILE] [--catalog-db PATH] [--library-db PATH]\n";
-    out << "                                        Identify FILE, or every scanned file\n";
-    out << "  list [--library-db PATH]              Print stored paths\n";
-    out << "  verify [--catalog-db PATH] [--library-db PATH]\n";
-    out << "                                        Recheck hashes against the catalog\n";
-    out << "  enrich [--online] [--dry-run]         Optional metadata for matched games only\n";
-    out << "  organize DEST [--dry-run] [--bundle] [--include-art] [--convert auto|never]\n";
-    out << "                                        Rename/move matched files; optional zip bundle\n\n";
-    out << "Diagnostics:\n";
-    out << "  hash PATH                             Print CRC32 MD5 SHA1 (stdout only)\n\n";
-    out << "Databases (two files, never mixed):\n";
-    out << "  --db / --catalog-db PATH              catalog.db\n";
-    out << "  --library-db PATH                     library.db\n";
-    out << "  --json                                Machine-readable output\n";
-}
+        int ok = 0;
+        int failed = 0;
+        int skipped = 0;
+        QSet<int> organizedIds;
+        QStringList plannedEntries;
 
-QStringList positionalArgs(const QCommandLineParser &parser) {
-    QStringList args = parser.positionalArguments();
-    for (int i = args.size() - 1; i >= 0; --i) {
-        if (args.at(i).startsWith(QLatin1Char('-'))) {
-            args.removeAt(i);
+        if (bundle) {
+            RomBundler bundler(db);
+            BundleConfig config;
+            config.dryRun = dryRun;
+            config.includeArt = includeArt;
+            config.convert
+                = convertMode == QStringLiteral("never") ? BundleConvertMode::Never : BundleConvertMode::Auto;
+            for (const FileRecord &file : files) {
+                if (includeArt)
+                    config.artworkPath = cachedArtworkPath(file.catalogGameId);
+                else
+                    config.artworkPath.clear();
+                const BundleResult bundled = bundler.bundle(file, metadataMap.value(file.id), dest, config);
+                if (bundled.skippedAlreadyBundled || bundled.skippedDiscSet) {
+                    ++skipped;
+                    if (bundled.skippedDiscSet)
+                        organizedIds.insert(file.id);
+                    continue;
+                }
+                if (!bundled.success) {
+                    ++failed;
+                    continue;
+                }
+                ++ok;
+                organizedIds.insert(file.id);
+                plannedEntries.append(bundled.archiveEntries);
+            }
+        } else {
+            OrganizeEngine engine(db);
+            engine.setDryRun(dryRun);
+            engine.setTemplate(TemplateEngine::getNoIntroTemplate());
+            const QList<OrganizeResult> results = engine.organizeFiles(fileIds, metadataMap, dest, FileOperation::Move);
+            for (const OrganizeResult &result : results) {
+                if (result.success)
+                    ++ok;
+                else
+                    ++failed;
+            }
+            for (int fileId : fileIds)
+                organizedIds.insert(fileId);
         }
+
+        int playlists = 0;
+        if (!dryRun && failed == 0 && !organizedIds.isEmpty()) {
+            M3UGenerator playlistsEngine(db);
+            playlists = playlistsEngine.generateAll(organizedIds, dest);
+        }
+
+        if (json) {
+            QJsonObject obj;
+            obj.insert(QStringLiteral("dest"), dest);
+            obj.insert(QStringLiteral("dry_run"), dryRun);
+            obj.insert(QStringLiteral("organized"), ok);
+            obj.insert(QStringLiteral("failed"), failed);
+            obj.insert(QStringLiteral("skipped_unmatched"), skippedUnmatched);
+            obj.insert(QStringLiteral("playlists"), playlists);
+            obj.insert(QStringLiteral("skipped"), skipped);
+            obj.insert(QStringLiteral("bundle"), bundle);
+            if (!plannedEntries.isEmpty()) {
+                QJsonArray entries;
+                for (const QString &entry : plannedEntries)
+                    entries.append(entry);
+                obj.insert(QStringLiteral("archive_entries"), entries);
+            }
+            obj.insert(QStringLiteral("status"), failed == 0 ? QStringLiteral("ok") : QStringLiteral("partial"));
+            QTextStream(stdout) << QJsonDocument(obj).toJson(QJsonDocument::Compact) << '\n';
+        } else {
+            QTextStream(stdout) << (dryRun ? "[dry-run] " : "") << "organized " << ok << " file(s) into " << dest;
+            if (skippedUnmatched > 0)
+                QTextStream(stdout) << " (" << skippedUnmatched << " unmatched skipped)";
+            if (playlists > 0)
+                QTextStream(stdout) << ", " << playlists << " playlist(s)";
+            if (failed > 0)
+                QTextStream(stdout) << " (" << failed << " failed)";
+            QTextStream(stdout) << '\n';
+        }
+        return failed > 0 ? 1 : 0;
     }
-    return args;
-}
+
+    int cmdVerify(const QCommandLineParser &parser, bool json) {
+        const QString libraryPath = libraryDbPath(parser);
+        const QString catalogPath = catalogDbPath(parser);
+
+        Database db;
+        if (!db.initialize(libraryPath)) {
+            if (json) {
+                QJsonObject obj;
+                obj.insert(QStringLiteral("status"), QStringLiteral("ok"));
+                obj.insert(QStringLiteral("files"), 0);
+                QTextStream(stdout) << QJsonDocument(obj).toJson(QJsonDocument::Compact) << '\n';
+            } else {
+                QTextStream(stdout) << "verify: no library database yet (ok)\n";
+            }
+            return 0;
+        }
+
+        VerificationEngine engine(&db);
+        engine.setCompendiumDb(catalogPath);
+        const QList<VerificationResult> results = engine.verifyLibrary();
+        const VerificationSummary summary = engine.getLastSummary();
+
+        if (json) {
+            QJsonObject obj;
+            obj.insert(QStringLiteral("status"), QStringLiteral("ok"));
+            obj.insert(QStringLiteral("total"), summary.totalFiles);
+            obj.insert(QStringLiteral("verified"), summary.verified);
+            obj.insert(QStringLiteral("mismatched"), summary.mismatched);
+            obj.insert(QStringLiteral("not_in_dat"), summary.notInDat);
+            obj.insert(QStringLiteral("no_hash"), summary.noHash);
+            obj.insert(QStringLiteral("corrupt"), summary.corrupt);
+            obj.insert(QStringLiteral("results"), static_cast<int>(results.size()));
+            QTextStream(stdout) << QJsonDocument(obj).toJson(QJsonDocument::Compact) << '\n';
+        } else {
+            QTextStream(stdout) << "verify: " << summary.totalFiles << " file(s), " << summary.verified << " verified, "
+                                << summary.mismatched << " mismatched\n";
+        }
+        return 0;
+    }
+
+    int cmdList(const QCommandLineParser &parser, bool json) {
+        const QString dbPath = libraryDbPath(parser);
+
+        Database db;
+        if (!db.initialize(dbPath)) {
+            return printError(QStringLiteral("Failed to open library database"));
+        }
+
+        const auto files = db.getAllFiles();
+        if (json) {
+            QJsonArray arr;
+            for (const FileRecord &file : files) {
+                QJsonObject obj;
+                obj.insert(QStringLiteral("path"), file.currentPath);
+                obj.insert(QStringLiteral("filename"), file.filename);
+                arr.append(obj);
+            }
+            QJsonObject root;
+            root.insert(QStringLiteral("files"), arr);
+            QTextStream(stdout) << QJsonDocument(root).toJson(QJsonDocument::Compact) << '\n';
+        } else {
+            for (const FileRecord &file : files) {
+                QTextStream(stdout) << file.currentPath << '\n';
+            }
+        }
+        return 0;
+    }
+
+    void printRootHelp() {
+        QTextStream out(stdout);
+        out << "Usage: remustwo <command> [args]\n\n";
+        out << "Catalog (DAT reference — ingest before you can match):\n";
+        out << "  catalog init [--db PATH]              Create schema only\n";
+        out << "  catalog ingest DAT [--db PATH]        Load a No-Intro/Redump DAT\n";
+        out << "  catalog import-hasheous JSON          Optional cover URLs from JSON\n\n";
+        out << "Library (your files — scan, then match):\n";
+        out << "  scan DIR [--library-db PATH]          Find ROM files, hash, store\n";
+        out << "  match [FILE] [--catalog-db PATH] [--library-db PATH]\n";
+        out << "                                        Identify FILE, or every scanned file\n";
+        out << "  list [--library-db PATH]              Print stored paths\n";
+        out << "  verify [--catalog-db PATH] [--library-db PATH]\n";
+        out << "                                        Recheck hashes against the catalog\n";
+        out << "  enrich [--online] [--dry-run]         Optional metadata for matched games only\n";
+        out << "  organize DEST [--dry-run] [--bundle] [--include-art] [--convert auto|never]\n";
+        out << "                                        Rename/move matched files; optional zip bundle\n\n";
+        out << "Diagnostics:\n";
+        out << "  hash PATH                             Print CRC32 MD5 SHA1 (stdout only)\n\n";
+        out << "Databases (two files, never mixed):\n";
+        out << "  --db / --catalog-db PATH              catalog.db\n";
+        out << "  --library-db PATH                     library.db\n";
+        out << "  --json                                Machine-readable output\n";
+    }
+
+    QStringList positionalArgs(const QCommandLineParser &parser) {
+        QStringList args = parser.positionalArguments();
+        for (int i = args.size() - 1; i >= 0; --i) {
+            if (args.at(i).startsWith(QLatin1Char('-'))) {
+                args.removeAt(i);
+            }
+        }
+        return args;
+    }
 
 } // namespace
 

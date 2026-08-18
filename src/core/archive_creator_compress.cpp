@@ -13,22 +13,22 @@ namespace remustwo {
 
 namespace {
 
-struct ArchiveInputEntry {
-    QString sourcePath;
-    QString archivePath;
-};
+    struct ArchiveInputEntry {
+        QString sourcePath;
+        QString archivePath;
+    };
 
-QStringList collectRelativeFilePaths(const QString &rootDir) {
-    QStringList entries;
-    QDir root(rootDir);
-    QDirIterator it(rootDir, QDir::Files | QDir::Hidden, QDirIterator::Subdirectories);
-    while (it.hasNext()) {
-        it.next();
-        entries << root.relativeFilePath(it.filePath()).replace(QLatin1Char('\\'), QLatin1Char('/'));
+    QStringList collectRelativeFilePaths(const QString &rootDir) {
+        QStringList entries;
+        QDir root(rootDir);
+        QDirIterator it(rootDir, QDir::Files | QDir::Hidden, QDirIterator::Subdirectories);
+        while (it.hasNext()) {
+            it.next();
+            entries << root.relativeFilePath(it.filePath()).replace(QLatin1Char('\\'), QLatin1Char('/'));
+        }
+        entries.sort();
+        return entries;
     }
-    entries.sort();
-    return entries;
-}
 
 } // namespace
 

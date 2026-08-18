@@ -26,6 +26,6 @@ struct EnrichOptions {
 };
 
 Result<EnrichStats> enrichLibrary(
-    const QString &catalogDbPath, const QString &libraryDbPath, const EnrichOptions &options = { });
+    const QString &catalogDbPath, const QString &libraryDbPath, const EnrichOptions &options = {});
 
 } // namespace remustwo

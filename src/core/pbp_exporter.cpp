@@ -10,12 +10,14 @@ PBPExporter::PBPExporter(QObject *parent)
     , m_psxPackagerPath("PSXPackager") { }
 
 bool PBPExporter::isPSXPackagerAvailable() const {
-    auto result = const_cast<PBPExporter *>(this)->runProcess(findTool(m_psxPackagerPath), QStringList() << "--version", 5000);
+    auto result
+        = const_cast<PBPExporter *>(this)->runProcess(findTool(m_psxPackagerPath), QStringList() << "--version", 5000);
     return result.started;
 }
 
 QString PBPExporter::getPSXPackagerVersion() const {
-    auto result = const_cast<PBPExporter *>(this)->runProcess(findTool(m_psxPackagerPath), QStringList() << "--version", 5000);
+    auto result
+        = const_cast<PBPExporter *>(this)->runProcess(findTool(m_psxPackagerPath), QStringList() << "--version", 5000);
     QString output = result.stdOutput.isEmpty() ? result.stdError : result.stdOutput;
     QStringList lines = output.split('\n');
     return lines.isEmpty() ? QString() : lines.first().trimmed();

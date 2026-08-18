@@ -12,12 +12,14 @@ RVZConverter::RVZConverter(QObject *parent)
     , m_dolphinToolPath("dolphin-tool") { }
 
 bool RVZConverter::isDolphinToolAvailable() const {
-    auto result = const_cast<RVZConverter *>(this)->runProcess(findTool(m_dolphinToolPath), QStringList() << "--help", 5000);
+    auto result
+        = const_cast<RVZConverter *>(this)->runProcess(findTool(m_dolphinToolPath), QStringList() << "--help", 5000);
     return result.started;
 }
 
 QString RVZConverter::getDolphinToolVersion() const {
-    auto result = const_cast<RVZConverter *>(this)->runProcess(findTool(m_dolphinToolPath), QStringList() << "--help", 5000);
+    auto result
+        = const_cast<RVZConverter *>(this)->runProcess(findTool(m_dolphinToolPath), QStringList() << "--help", 5000);
     // dolphin-tool prints version info in help output
     QStringList lines = result.stdOutput.split('\n');
     for (const QString &line : lines) {
@@ -44,10 +46,7 @@ ConversionResult RVZConverter::convertIsoToRVZ(const QString &isoPath, const QSt
     QString output = outputPath.isEmpty() ? getDefaultOutputPath(isoPath, "rvz") : outputPath;
 
     QStringList args;
-    args << "convert"
-         << "--format=rvz"
-         << "--block_size=131072"
-         << "--input" << isoPath << "--output" << output;
+    args << "convert" << "--format=rvz" << "--block_size=131072" << "--input" << isoPath << "--output" << output;
 
     QString compression = getCompressionString();
     if (!compression.isEmpty()) {
@@ -62,9 +61,7 @@ ConversionResult RVZConverter::extractRVZToIso(const QString &rvzPath, const QSt
     QString output = outputPath.isEmpty() ? getDefaultOutputPath(rvzPath, "iso") : outputPath;
 
     QStringList args;
-    args << "convert"
-         << "--format=iso"
-         << "--input" << rvzPath << "--output" << output;
+    args << "convert" << "--format=iso" << "--input" << rvzPath << "--output" << output;
 
     return runToolConversion(findTool(m_dolphinToolPath), args, "dolphin-tool", rvzPath, output);
 }

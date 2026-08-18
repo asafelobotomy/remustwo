@@ -18,7 +18,8 @@ QString artworkCacheDir() {
 }
 
 Result<QString> cacheArtwork(const QUrl &url, const QString &gameId, bool online) {
-    const QString suffix = QFileInfo(url.path()).suffix().isEmpty() ? QStringLiteral("jpg") : QFileInfo(url.path()).suffix();
+    const QString suffix
+        = QFileInfo(url.path()).suffix().isEmpty() ? QStringLiteral("jpg") : QFileInfo(url.path()).suffix();
     const QString destPath = artworkCacheDir() + QLatin1Char('/') + gameId + QLatin1Char('.') + suffix;
 
     if (QFile::exists(destPath)) {
@@ -53,11 +54,11 @@ Result<QString> cacheArtwork(const QUrl &url, const QString &gameId, bool online
 
 QString cachedArtworkPath(const QString &gameId) {
     if (gameId.trimmed().isEmpty())
-        return { };
+        return {};
     const QDir dir(artworkCacheDir());
     const QStringList matches = dir.entryList(QStringList { gameId + QStringLiteral(".*") }, QDir::Files);
     if (matches.isEmpty())
-        return { };
+        return {};
     return dir.absoluteFilePath(matches.first());
 }
 

@@ -21,87 +21,85 @@ namespace remustwo {
 
 namespace {
 
-QString dottedExtension(const QString &path) {
-    const QString suffix = QFileInfo(path).suffix();
-    return suffix.isEmpty() ? QString() : QStringLiteral(".") + suffix.toLower();
-}
+    QString dottedExtension(const QString &path) {
+        const QString suffix = QFileInfo(path).suffix();
+        return suffix.isEmpty() ? QString() : QStringLiteral(".") + suffix.toLower();
+    }
 
-bool isAlreadyCompressedContainer(const QString &extension) {
-    return Constants::Files::isArchiveExtension(extension)
-        || extension == Constants::Files::CHD || extension == Constants::Files::RVZ
-        || extension == Constants::Files::CSO;
-}
+    bool isAlreadyCompressedContainer(const QString &extension) {
+        return Constants::Files::isArchiveExtension(extension) || extension == Constants::Files::CHD
+            || extension == Constants::Files::RVZ || extension == Constants::Files::CSO;
+    }
 
-QString plannedConvertedExtension(const QString &sourcePath, const FileRecord &file, BundleConvertMode mode) {
-    const QString ext = dottedExtension(sourcePath);
-    if (mode == BundleConvertMode::Never || isAlreadyCompressedContainer(ext))
+    QString plannedConvertedExtension(const QString &sourcePath, const FileRecord &file, BundleConvertMode mode) {
+        const QString ext = dottedExtension(sourcePath);
+        if (mode == BundleConvertMode::Never || isAlreadyCompressedContainer(ext))
+            return ext;
+        if (file.systemId == Constants::Systems::ID_PSP && ext == Constants::Files::ISO) {
+            CSOConverter converter;
+            return converter.isMaxcsoAvailable() ? Constants::Files::CSO : ext;
+        }
+        if ((file.systemId == Constants::Systems::ID_GAMECUBE || file.systemId == Constants::Systems::ID_WII)
+            && (ext == Constants::Files::ISO || ext == Constants::Files::GCM)) {
+            RVZConverter converter;
+            return converter.isDolphinToolAvailable() ? Constants::Files::RVZ : ext;
+        }
+        const bool discIso = ext == Constants::Files::ISO && Constants::Systems::DISC_SYSTEMS.contains(file.systemId);
+        if (ext == Constants::Files::CUE || ext == Constants::Files::GDI || discIso) {
+            CHDConverter converter;
+            return converter.isChdmanAvailable() ? Constants::Files::CHD : ext;
+        }
         return ext;
-    if (file.systemId == Constants::Systems::ID_PSP && ext == Constants::Files::ISO) {
-        CSOConverter converter;
-        return converter.isMaxcsoAvailable() ? Constants::Files::CSO : ext;
     }
-    if ((file.systemId == Constants::Systems::ID_GAMECUBE || file.systemId == Constants::Systems::ID_WII)
-        && (ext == Constants::Files::ISO || ext == Constants::Files::GCM)) {
-        RVZConverter converter;
-        return converter.isDolphinToolAvailable() ? Constants::Files::RVZ : ext;
-    }
-    const bool discIso
-        = ext == Constants::Files::ISO && Constants::Systems::DISC_SYSTEMS.contains(file.systemId);
-    if (ext == Constants::Files::CUE || ext == Constants::Files::GDI || discIso) {
-        CHDConverter converter;
-        return converter.isChdmanAvailable() ? Constants::Files::CHD : ext;
-    }
-    return ext;
-}
 
-QString convertPayload(const QString &sourcePath, const FileRecord &file, BundleConvertMode mode,
-    QString &payloadExtension) {
-    payloadExtension = plannedConvertedExtension(sourcePath, file, mode);
-    if (payloadExtension == dottedExtension(sourcePath))
-        return sourcePath;
+    QString convertPayload(
+        const QString &sourcePath, const FileRecord &file, BundleConvertMode mode, QString &payloadExtension) {
+        payloadExtension = plannedConvertedExtension(sourcePath, file, mode);
+        if (payloadExtension == dottedExtension(sourcePath))
+            return sourcePath;
 
-    const QString ext = dottedExtension(sourcePath);
-    if (payloadExtension == Constants::Files::CSO) {
-        CSOConverter converter;
-        const ConversionResult converted = converter.convertIsoToCSO(sourcePath);
-        if (converted.success)
-            return converted.outputPath;
-        payloadExtension = ext;
+        const QString ext = dottedExtension(sourcePath);
+        if (payloadExtension == Constants::Files::CSO) {
+            CSOConverter converter;
+            const ConversionResult converted = converter.convertIsoToCSO(sourcePath);
+            if (converted.success)
+                return converted.outputPath;
+            payloadExtension = ext;
+            return sourcePath;
+        }
+        if (payloadExtension == Constants::Files::RVZ) {
+            RVZConverter converter;
+            const ConversionResult converted = converter.convertIsoToRVZ(sourcePath);
+            if (converted.success)
+                return converted.outputPath;
+            payloadExtension = ext;
+            return sourcePath;
+        }
+        if (payloadExtension == Constants::Files::CHD) {
+            CHDConverter converter;
+            ConversionResult converted;
+            if (ext == Constants::Files::CUE)
+                converted = converter.convertCueToCHD(sourcePath);
+            else if (ext == Constants::Files::GDI)
+                converted = converter.convertGdiToCHD(sourcePath);
+            else
+                converted = converter.convertIsoToCHD(sourcePath);
+            if (converted.success)
+                return converted.outputPath;
+            payloadExtension = ext;
+            return sourcePath;
+        }
         return sourcePath;
     }
-    if (payloadExtension == Constants::Files::RVZ) {
-        RVZConverter converter;
-        const ConversionResult converted = converter.convertIsoToRVZ(sourcePath);
-        if (converted.success)
-            return converted.outputPath;
-        payloadExtension = ext;
-        return sourcePath;
-    }
-    if (payloadExtension == Constants::Files::CHD) {
-        CHDConverter converter;
-        ConversionResult converted;
-        if (ext == Constants::Files::CUE)
-            converted = converter.convertCueToCHD(sourcePath);
-        else if (ext == Constants::Files::GDI)
-            converted = converter.convertGdiToCHD(sourcePath);
-        else
-            converted = converter.convertIsoToCHD(sourcePath);
-        if (converted.success)
-            return converted.outputPath;
-        payloadExtension = ext;
-        return sourcePath;
-    }
-    return sourcePath;
-}
 
-QString safeFileStem(const GameMetadata &metadata, const FileRecord &file) {
-    QString stem = metadata.title.isEmpty() ? file.baseTitle : metadata.title;
-    if (stem.isEmpty())
-        stem = QFileInfo(file.filename).completeBaseName();
-    stem.replace(QLatin1Char('/'), QLatin1Char('_'));
-    stem.replace(QLatin1Char('\\'), QLatin1Char('_'));
-    return stem;
-}
+    QString safeFileStem(const GameMetadata &metadata, const FileRecord &file) {
+        QString stem = metadata.title.isEmpty() ? file.baseTitle : metadata.title;
+        if (stem.isEmpty())
+            stem = QFileInfo(file.filename).completeBaseName();
+        stem.replace(QLatin1Char('/'), QLatin1Char('_'));
+        stem.replace(QLatin1Char('\\'), QLatin1Char('_'));
+        return stem;
+    }
 
 } // namespace
 
@@ -139,8 +137,8 @@ QString RomBundler::generateMarkerContent(const FileRecord &file, const GameMeta
     return out;
 }
 
-QString RomBundler::convertIfNeeded(const QString &sourcePath, const FileRecord &file, const BundleConfig &config,
-    QString &payloadExtension) const {
+QString RomBundler::convertIfNeeded(
+    const QString &sourcePath, const FileRecord &file, const BundleConfig &config, QString &payloadExtension) const {
     return convertPayload(sourcePath, file, config.convert, payloadExtension);
 }
 
@@ -210,8 +208,8 @@ BundleResult RomBundler::bundle(
         return result;
     }
 
-    const QString tempBase
-        = dest.absolutePath() + QStringLiteral("/.remustwo_bundle_") + QString::number(QDateTime::currentMSecsSinceEpoch());
+    const QString tempBase = dest.absolutePath() + QStringLiteral("/.remustwo_bundle_")
+        + QString::number(QDateTime::currentMSecsSinceEpoch());
     if (!QDir().mkpath(tempBase)) {
         result.error = QStringLiteral("Cannot create staging directory");
         return result;

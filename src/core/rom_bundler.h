@@ -43,8 +43,8 @@ private:
     Database &m_database;
 
     QString generateMarkerContent(const FileRecord &file, const GameMetadata &metadata) const;
-    QString convertIfNeeded(const QString &sourcePath, const FileRecord &file, const BundleConfig &config,
-        QString &payloadExtension) const;
+    QString convertIfNeeded(
+        const QString &sourcePath, const FileRecord &file, const BundleConfig &config, QString &payloadExtension) const;
 };
 
 } // namespace remustwo

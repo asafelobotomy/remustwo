@@ -23,7 +23,7 @@ namespace {
 
 QList<FileRecord> Database::getFilesByDiscSetKey(const QString &discSetKey) {
     if (discSetKey.isEmpty())
-        return { };
+        return {};
 
     QSqlQuery query(m_db);
     query.prepare(QStringLiteral("SELECT id, library_id, original_path, current_path, filename, extension, "
@@ -37,7 +37,7 @@ QList<FileRecord> Database::getFilesByDiscSetKey(const QString &discSetKey) {
     query.addBindValue(discSetKey);
     if (!query.exec()) {
         logError("Failed to query files by disc set key: " + query.lastError().text());
-        return { };
+        return {};
     }
 
     QList<FileRecord> files;
@@ -110,7 +110,7 @@ bool Database::rebuildDiscSetsForLibrary(int libraryId) {
         compendiumDb = QSqlDatabase::addDatabase(QStringLiteral("QSQLITE"), compendiumConnName);
         compendiumDb.setDatabaseName(m_compendiumDbPath);
         if (!compendiumDb.open())
-            compendiumDb = { };
+            compendiumDb = {};
     }
 
     QSqlQuery query(m_db);

@@ -245,7 +245,7 @@ QList<FileRecord> Database::getFilesNeedingChdSha1() {
                                    "WHERE is_primary = 1 "
                                    "  AND LOWER(extension) = '.chd' "
                                    "  AND (chd_sha1 IS NULL OR TRIM(chd_sha1) = '')")
-                .arg(QLatin1String(kFileSelectColumns)))) {
+                        .arg(QLatin1String(kFileSelectColumns)))) {
         logError("Failed to query CHD files needing header SHA1: " + query.lastError().text());
         return files;
     }
@@ -279,7 +279,7 @@ QList<FileRecord> Database::getFilesNeedingRvzSha1() {
                                    "WHERE is_primary = 1 "
                                    "  AND LOWER(extension) IN ('.rvz', '.gcz') "
                                    "  AND (rvz_sha1 IS NULL OR TRIM(rvz_sha1) = '')")
-                .arg(QLatin1String(kFileSelectColumns)))) {
+                        .arg(QLatin1String(kFileSelectColumns)))) {
         logError("Failed to query RVZ/GCZ files needing content SHA1: " + query.lastError().text());
         return files;
     }
@@ -334,12 +334,12 @@ FileRecord Database::getFileById(int fileId) {
     query.addBindValue(fileId);
     if (query.exec() && query.next())
         return fileRecordFromRow(query);
-    return { };
+    return {};
 }
 
 QList<FileRecord> Database::getFilesByIds(const QSet<int> &fileIds) {
     if (fileIds.isEmpty())
-        return { };
+        return {};
     QStringList placeholders;
     placeholders.reserve(fileIds.size());
     for (int i = 0; i < fileIds.size(); ++i)
@@ -352,7 +352,7 @@ QList<FileRecord> Database::getFilesByIds(const QSet<int> &fileIds) {
         query.addBindValue(id);
     if (!query.exec()) {
         logError("getFilesByIds failed: " + query.lastError().text());
-        return { };
+        return {};
     }
     QList<FileRecord> files;
     files.reserve(fileIds.size());
@@ -372,7 +372,7 @@ QList<FileRecord> Database::queryFiles(const QString &whereClause) {
     QSqlQuery query(m_db);
     if (!query.exec(sql)) {
         logError("Failed to query files: " + query.lastError().text());
-        return { };
+        return {};
     }
     QList<FileRecord> files;
     while (query.next())
@@ -384,7 +384,7 @@ QList<FileRecord> Database::getExistingFiles() {
     QSqlQuery query(m_db);
     if (!query.exec(QString("SELECT %1 FROM files").arg(QLatin1String(kFileSelectColumns)))) {
         logError("Failed to get existing files: " + query.lastError().text());
-        return { };
+        return {};
     }
     QList<FileRecord> files;
     while (query.next()) {
@@ -404,7 +404,7 @@ QList<FileRecord> Database::getFilesWithConfirmedMatch() {
                             .arg(QLatin1String(kFileSelectColumns));
     if (!query.exec(sql)) {
         logError("Failed to get files with confirmed match: " + query.lastError().text());
-        return { };
+        return {};
     }
     QList<FileRecord> files;
     while (query.next())
@@ -422,7 +422,7 @@ QList<FileRecord> Database::getFilesEligibleForOrganize() {
                             .arg(QLatin1String(kFileSelectColumns));
     if (!query.exec(sql)) {
         logError("Failed to get files eligible for organize: " + query.lastError().text());
-        return { };
+        return {};
     }
     QList<FileRecord> files;
     while (query.next())
@@ -435,11 +435,10 @@ bool Database::updateFileCatalogMatch(
     if (fileId <= 0)
         return false;
     QSqlQuery query(m_db);
-    query.prepare(QStringLiteral(
-        "UPDATE files SET system_id = ?, "
-        "base_title = COALESCE(NULLIF(?, ''), base_title), "
-        "catalog_game_id = COALESCE(NULLIF(?, ''), catalog_game_id) "
-        "WHERE id = ?"));
+    query.prepare(QStringLiteral("UPDATE files SET system_id = ?, "
+                                 "base_title = COALESCE(NULLIF(?, ''), base_title), "
+                                 "catalog_game_id = COALESCE(NULLIF(?, ''), catalog_game_id) "
+                                 "WHERE id = ?"));
     query.addBindValue(systemId);
     query.addBindValue(baseTitle);
     query.addBindValue(catalogGameId);
@@ -455,9 +454,8 @@ bool Database::markFileBundled(int fileId, const QString &bundleOutputPath) {
     if (fileId <= 0)
         return false;
     QSqlQuery query(m_db);
-    query.prepare(QStringLiteral(
-        "UPDATE files SET is_bundled = 1, bundle_output_path = ?, is_processed = 1, "
-        "processing_status = 'bundled' WHERE id = ?"));
+    query.prepare(QStringLiteral("UPDATE files SET is_bundled = 1, bundle_output_path = ?, is_processed = 1, "
+                                 "processing_status = 'bundled' WHERE id = ?"));
     query.addBindValue(bundleOutputPath);
     query.addBindValue(fileId);
     if (!query.exec()) {
@@ -471,7 +469,7 @@ QList<FileRecord> Database::getFilesBySystem(const QString &systemName) {
     const int systemId = getSystemId(systemName);
     if (systemId == 0) {
         logError("System not found: " + systemName);
-        return { };
+        return {};
     }
     QSqlQuery query(m_db);
     query.prepare(
@@ -479,7 +477,7 @@ QList<FileRecord> Database::getFilesBySystem(const QString &systemName) {
     query.addBindValue(systemId);
     if (!query.exec()) {
         logError("Failed to get files by system: " + query.lastError().text());
-        return { };
+        return {};
     }
     QList<FileRecord> files;
     while (query.next())
@@ -493,7 +491,7 @@ QList<FileRecord> Database::getFilesByParent(int parentId) {
     query.addBindValue(parentId);
     if (!query.exec()) {
         logError("Failed to get files by parent: " + query.lastError().text());
-        return { };
+        return {};
     }
     QList<FileRecord> files;
     while (query.next())

@@ -82,7 +82,8 @@ VerifyResult CHDConverter::verifyCHD(const QString &chdPath) {
     VerifyResult result;
     result.path = chdPath;
 
-    ProcessResult processResult = runProcess(findTool(m_chdmanPath), QStringList() << "verify" << "-i" << chdPath, 300000);
+    ProcessResult processResult
+        = runProcess(findTool(m_chdmanPath), QStringList() << "verify" << "-i" << chdPath, 300000);
 
     result.valid = (processResult.exitCode == 0);
     result.details = processResult.stdOutput;

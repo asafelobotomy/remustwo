@@ -33,10 +33,10 @@ namespace {
     QString md5HexSkipping(const QString &filePath, qint64 skipBytes) {
         QFile file(filePath);
         if (!file.open(QIODevice::ReadOnly))
-            return { };
+            return {};
 
         if (skipBytes > 0 && !file.seek(skipBytes))
-            return { };
+            return {};
 
         QCryptographicHash hash(QCryptographicHash::Md5);
         static constexpr qint64 kChunkSize = 65536;
@@ -144,7 +144,7 @@ namespace {
                 return QDir::cleanPath(candidate);
         }
 
-        return { };
+        return {};
     }
 
     QString resolvedExternalSystemPath() {
@@ -295,7 +295,7 @@ QString RaHasher::md5ForPayload(
     case RaHashMode::N64:
         return md5Hex(normalizeN64Payload(payload, extension));
     default:
-        return { };
+        return {};
     }
 }
 

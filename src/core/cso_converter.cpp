@@ -17,7 +17,8 @@ bool CSOConverter::isMaxcsoAvailable() const {
 }
 
 QString CSOConverter::getMaxcsoVersion() const {
-    auto result = const_cast<CSOConverter *>(this)->runProcess(findTool(m_maxcsoPath), QStringList() << "--version", 5000);
+    auto result
+        = const_cast<CSOConverter *>(this)->runProcess(findTool(m_maxcsoPath), QStringList() << "--version", 5000);
     // maxcso may print version to stdout or stderr
     QString output = result.stdOutput.isEmpty() ? result.stdError : result.stdOutput;
     QStringList lines = output.split('\n');

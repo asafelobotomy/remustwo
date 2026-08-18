@@ -41,7 +41,8 @@ private slots:
         GameMetadata metadata;
         metadata.title = files.first().baseTitle;
         metadata.system = QStringLiteral("NES");
-        const BundleResult result = bundler.bundle(files.first(), metadata, dir.filePath(QStringLiteral("out")), config);
+        const BundleResult result
+            = bundler.bundle(files.first(), metadata, dir.filePath(QStringLiteral("out")), config);
         QVERIFY2(result.success, qPrintable(result.error));
         QVERIFY(result.archiveEntries.contains(QStringLiteral(".remus.md")));
         QVERIFY(!result.outputPath.isEmpty());
