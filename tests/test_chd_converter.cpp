@@ -61,6 +61,7 @@ private slots:
     void testGetCHDInfoParsesHeaderAndDataSha1();
     void testGetCHDInfoSupportsLegacyLabelsAndFailureDefaults();
     void testConvertIso();
+    void testConvertLargeIsoUsesCreatedvd();
     void testConvertCueAndGdiIncludeConfiguredArguments();
     void testExtractChdUsesDefaultCueOutputPath();
     void testBatchConvertSupportedFormatsUsesOutputDirectory();
@@ -202,6 +203,28 @@ void ChdConverterTest::testConvertIso() {
     converter.nextTracked.exitCode = 1;
     ConversionResult bad = converter.convertIsoToCHD(inputPath, outputPath);
     QVERIFY(!bad.success);
+}
+
+void ChdConverterTest::testConvertLargeIsoUsesCreatedvd() {
+    QTemporaryDir dir;
+    QVERIFY(dir.isValid());
+    const QString inputPath = dir.path() + "/dvd.iso";
+    const QString outputPath = dir.path() + "/dvd.chd";
+    QFile inputFile(inputPath);
+    QVERIFY(inputFile.open(QIODevice::WriteOnly));
+    QVERIFY(inputFile.resize(900LL * 1024 * 1024));
+    inputFile.close();
+
+    FakeChdConverter converter;
+    converter.nextTracked.started = true;
+    converter.nextTracked.exitCode = 0;
+    converter.autoCreateTrackedOutput = true;
+
+    ConversionResult result = converter.convertIsoToCHD(inputPath, outputPath);
+    QVERIFY(result.success);
+    QCOMPARE(converter.lastArgs.value(0), QStringLiteral("createdvd"));
+    QCOMPARE(converter.lastArgs.value(2), inputPath);
+    QCOMPARE(converter.lastArgs.value(4), outputPath);
 }
 
 void ChdConverterTest::testConvertCueAndGdiIncludeConfiguredArguments() {

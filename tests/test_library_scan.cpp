@@ -6,6 +6,7 @@
 #include "../src/catalog/catalog.h"
 #include "../src/catalog/catalog_ingest.h"
 #include "../src/catalog/catalog_match.h"
+#include "../src/core/database.h"
 #include "../src/core/library_scan.h"
 #include "../src/metadata/library_organize.h"
 #include "rom_paths.h"
@@ -41,6 +42,46 @@ private slots:
         file.close();
         auto result = scanLibrary(filePath, dir.filePath(QStringLiteral("library.db")));
         QVERIFY(!result);
+    }
+
+    void scanPersistsCueBinPrimaryFlag() {
+        QTemporaryDir dir;
+        QVERIFY(dir.isValid());
+        const QString romDir = dir.filePath(QStringLiteral("roms"));
+        QVERIFY(QDir().mkpath(romDir));
+        QFile cue(romDir + QStringLiteral("/Metal Gear Solid (USA) (Disc 1).cue"));
+        QVERIFY(cue.open(QIODevice::WriteOnly | QIODevice::Text));
+        cue.write("FILE \"Metal Gear Solid (USA) (Disc 1).bin\" BINARY\n"
+                  "  TRACK 01 MODE2/2352\n"
+                  "    INDEX 01 00:00:00\n");
+        cue.close();
+        QFile bin(romDir + QStringLiteral("/Metal Gear Solid (USA) (Disc 1).bin"));
+        QVERIFY(bin.open(QIODevice::WriteOnly));
+        bin.write(QByteArray(64, 'B'));
+        bin.close();
+
+        const QString libraryPath = dir.filePath(QStringLiteral("library.db"));
+        auto result = scanLibrary(romDir, libraryPath);
+        QVERIFY2(result, qPrintable(result.error()));
+        QCOMPARE(result->scanned, 2);
+        QCOMPARE(result->stored, 2);
+
+        Database db;
+        QVERIFY(db.initialize(libraryPath));
+        bool sawCue = false;
+        bool sawBin = false;
+        for (const FileRecord &file : db.getAllFiles()) {
+            if (file.extension == QLatin1String(".cue")) {
+                sawCue = true;
+                QVERIFY(!file.isPrimary);
+                QVERIFY(file.parentFileId > 0);
+            } else if (file.extension == QLatin1String(".bin")) {
+                sawBin = true;
+                QVERIFY(file.isPrimary);
+            }
+        }
+        QVERIFY(sawCue);
+        QVERIFY(sawBin);
     }
 
     void organizeDryRunBundleAfterMatch() {

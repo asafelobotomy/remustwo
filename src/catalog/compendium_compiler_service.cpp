@@ -175,27 +175,34 @@ namespace Compendium {
 
         const int serialMerged = buildAndApplyDedupMap(db, QStringLiteral(R"(
         CREATE TEMPORARY TABLE _dedup_map AS
-        WITH sig_counts AS (
+        WITH serial_rows AS (
             SELECT g.game_id, g.system_id, gs.serial_value,
+                   CASE
+                     WHEN instr(COALESCE(gs.source_entry_key, ''), '|') = 0 THEN ''
+                     ELSE substr(
+                         gs.source_entry_key,
+                         instr(gs.source_entry_key, '|') + 1,
+                         instr(substr(gs.source_entry_key, instr(gs.source_entry_key, '|') + 1) || '|', '|') - 1
+                     )
+                   END AS dat_title,
                    COUNT(sig.signature_id) AS sig_count
             FROM games g
             JOIN game_serials gs ON gs.game_id = g.game_id
             LEFT JOIN game_signatures sig ON sig.game_id = g.game_id
-            GROUP BY g.game_id, g.system_id, gs.serial_value
+            GROUP BY g.game_id, g.system_id, gs.serial_value, dat_title
         ),
         ranked AS (
-            SELECT game_id, system_id, serial_value, sig_count,
+            SELECT game_id, system_id, serial_value, dat_title, sig_count,
                    ROW_NUMBER() OVER (
-                       PARTITION BY system_id, serial_value
+                       PARTITION BY system_id, serial_value, dat_title
                        ORDER BY sig_count DESC, game_id ASC
                    ) AS rn
-            FROM sig_counts
-            WHERE (system_id, serial_value) IN (
-                SELECT g.system_id, gs.serial_value
-                FROM games g
-                JOIN game_serials gs ON gs.game_id = g.game_id
-                GROUP BY g.system_id, gs.serial_value
-                HAVING COUNT(DISTINCT g.game_id) > 1
+            FROM serial_rows
+            WHERE (system_id, serial_value, dat_title) IN (
+                SELECT system_id, serial_value, dat_title
+                FROM serial_rows
+                GROUP BY system_id, serial_value, dat_title
+                HAVING COUNT(DISTINCT game_id) > 1
             )
         )
         SELECT loser.game_id  AS loser_id,
@@ -203,6 +210,7 @@ namespace Compendium {
         FROM ranked loser
         JOIN ranked winner ON loser.system_id    = winner.system_id
                           AND loser.serial_value = winner.serial_value
+                          AND loser.dat_title    = winner.dat_title
                           AND winner.rn = 1
         WHERE loser.rn > 1)"),
             error);

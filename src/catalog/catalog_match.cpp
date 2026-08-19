@@ -25,13 +25,19 @@ namespace {
         return hashes;
     }
 
+    QString titleFromSourceEntryKey(const QString &sourceEntryKey) {
+        const QStringList parts = sourceEntryKey.split(QLatin1Char('|'));
+        return parts.size() >= 2 ? parts.at(1).trimmed() : QString();
+    }
+
     Result<CatalogMatch> lookupHashes(QSqlDatabase &db, const HashResult &hashes) {
         const auto lookup = [&](const QString &hashType, const QString &value) -> Result<CatalogMatch> {
             if (value.isEmpty()) {
                 return Result<CatalogMatch>::fail(QStringLiteral("empty hash"));
             }
             QSqlQuery query(db);
-            query.prepare(QStringLiteral("SELECT g.game_id, g.canonical_title, gs.hash_value, g.system_id "
+            query.prepare(QStringLiteral("SELECT g.game_id, g.canonical_title, gs.hash_value, g.system_id, "
+                                         "gs.source_entry_key "
                                          "FROM game_signatures gs JOIN games g ON g.game_id = gs.game_id "
                                          "WHERE gs.hash_type = ? AND lower(gs.hash_value) = lower(?) LIMIT 1"));
             query.addBindValue(hashType);
@@ -44,9 +50,11 @@ namespace {
             }
             CatalogMatch match;
             match.gameId = query.value(0).toString();
-            match.title = query.value(1).toString();
+            const QString canonicalTitle = query.value(1).toString();
             match.matchedHash = query.value(2).toString();
             match.systemId = query.value(3).toInt();
+            const QString entryTitle = titleFromSourceEntryKey(query.value(4).toString());
+            match.title = entryTitle.isEmpty() ? canonicalTitle : entryTitle;
             match.confidence = MatchingEngine::calculateConfidence(Constants::MatchMethods::HASH, 0.0f);
             return Result<CatalogMatch>::ok(match);
         };

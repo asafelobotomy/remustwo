@@ -68,6 +68,8 @@ public:
 private:
     ConversionResult runChdman(const QStringList &args, const QString &inputPath, const QString &outputPath);
     QStringList buildCreateCdArgs(const QString &inputPath, const QString &outputPath);
+    QStringList buildCreateDvdArgs(const QString &inputPath, const QString &outputPath);
+    QStringList buildCreateArgs(const QString &command, const QString &inputPath, const QString &outputPath) const;
     QString getCodecString() const;
 
     QString m_chdmanPath;

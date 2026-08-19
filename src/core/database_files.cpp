@@ -154,6 +154,20 @@ int Database::insertFile(const FileRecord &record) {
     return newId;
 }
 
+bool Database::updateFileParent(int fileId, int parentFileId) {
+    if (fileId <= 0)
+        return false;
+    QSqlQuery query(m_db);
+    query.prepare(QStringLiteral("UPDATE files SET parent_file_id = ? WHERE id = ?"));
+    query.addBindValue(parentFileId > 0 ? parentFileId : QVariant());
+    query.addBindValue(fileId);
+    if (!query.exec()) {
+        logError("Failed to update parent file: " + query.lastError().text());
+        return false;
+    }
+    return true;
+}
+
 bool Database::updateFileHashes(int fileId, const QString &crc32, const QString &md5, const QString &sha1,
     const QString &raMd5, const QString &chdSha1, const QString &rvzSha1) {
     QSqlQuery query(m_db);

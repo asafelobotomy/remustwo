@@ -41,6 +41,32 @@ namespace {
         }
     }
 
+    QString playlistPath(const QStringList &discPaths, const QString &baseTitle, const QString &outputDir) {
+        QString destDir = outputDir;
+        if (!discPaths.isEmpty()) {
+            const QString parent = QFileInfo(discPaths.first()).absolutePath();
+            bool sameParent = true;
+            for (const QString &discPath : discPaths) {
+                if (QFileInfo(discPath).absolutePath() != parent) {
+                    sameParent = false;
+                    break;
+                }
+            }
+            if (sameParent) {
+                if (outputDir.isEmpty()) {
+                    destDir = parent;
+                } else {
+                    const QString outAbs = QDir(outputDir).absolutePath();
+                    if (parent == outAbs || parent.startsWith(outAbs + QLatin1Char('/')))
+                        destDir = parent;
+                }
+            }
+        }
+        if (destDir.isEmpty() || baseTitle.isEmpty())
+            return {};
+        return QDir(destDir).filePath(baseTitle + Constants::Files::M3U);
+    }
+
 } // namespace
 
 M3UGenerator::M3UGenerator(Database &db, QObject *parent)
@@ -120,15 +146,9 @@ int M3UGenerator::generateAll(const QString &systemName, const QString &outputDi
             discPaths.append(file.currentPath);
 
         const QString baseTitle = titleForDiscSet(fileInfos, catalogPtr);
-        QString m3uPath;
-        if (!outputDir.isEmpty()) {
-            m3uPath = QDir(outputDir).filePath(baseTitle + Constants::Files::M3U);
-        } else if (!discPaths.isEmpty()) {
-            QFileInfo firstDisc(discPaths.first());
-            m3uPath = firstDisc.absoluteDir().filePath(baseTitle + Constants::Files::M3U);
-        }
+        const QString m3uPath = playlistPath(discPaths, baseTitle, outputDir);
 
-        if (generateM3U(baseTitle, discPaths, m3uPath))
+        if (!m3uPath.isEmpty() && generateM3U(baseTitle, discPaths, m3uPath))
             ++generated;
     }
 
@@ -164,15 +184,9 @@ int M3UGenerator::generateAll(const QSet<int> &fileIds, const QString &outputDir
             discPaths.append(file.currentPath);
 
         const QString baseTitle = titleForDiscSet(fileInfos, catalogPtr);
-        QString m3uPath;
-        if (!outputDir.isEmpty()) {
-            m3uPath = QDir(outputDir).filePath(baseTitle + Constants::Files::M3U);
-        } else if (!discPaths.isEmpty()) {
-            QFileInfo firstDisc(discPaths.first());
-            m3uPath = firstDisc.absoluteDir().filePath(baseTitle + Constants::Files::M3U);
-        }
+        const QString m3uPath = playlistPath(discPaths, baseTitle, outputDir);
 
-        if (generateM3U(baseTitle, discPaths, m3uPath))
+        if (!m3uPath.isEmpty() && generateM3U(baseTitle, discPaths, m3uPath))
             ++generated;
     }
 

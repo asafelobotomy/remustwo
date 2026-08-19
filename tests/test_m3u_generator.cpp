@@ -1,5 +1,6 @@
 #include <QtTest/QtTest>
 #include <QTemporaryDir>
+#include <QDir>
 #include <QFile>
 #include "../src/core/m3u_generator.h"
 #include "../src/core/disc_set_utils.h"
@@ -16,6 +17,7 @@ private slots:
     void testGenerateM3UFile();
     void testGenerateAll();
     void testGenerateAllScopedFileIds();
+    void testGenerateAllWritesInsideGameFolder();
 
 private:
     static int insertDiscFile(Database &db, int libId, int sysId, const QString &filename) {
@@ -164,6 +166,58 @@ void M3UGeneratorTest::testGenerateAllScopedFileIds() {
     const QStringList m3uFiles = outDir.entryList({ "*.m3u" }, QDir::Files);
     QCOMPARE(m3uFiles.size(), 1);
     QVERIFY(m3uFiles.first().contains("Metal Gear Solid"));
+}
+
+void M3UGeneratorTest::testGenerateAllWritesInsideGameFolder() {
+    QTemporaryDir dir;
+    QVERIFY(dir.isValid());
+
+    Database db;
+    QVERIFY(db.initialize(":memory:"));
+
+    int libId = db.insertLibrary("/roms/psx", "PSX");
+    int sysId = db.getSystemId("PlayStation");
+    if (sysId == 0)
+        QSKIP("PlayStation system not in default DB");
+
+    const QString dest = dir.path();
+    const QString folder = dest + QStringLiteral("/Metal Gear Solid");
+    QVERIFY(QDir().mkpath(folder));
+
+    const auto insertDisc = [&](const QString &filename) {
+        const QString path = folder + QLatin1Char('/') + filename;
+        QFile file(path);
+        if (!file.open(QIODevice::WriteOnly))
+            return 0;
+        file.write("disc");
+        file.close();
+        FileRecord fr;
+        fr.libraryId = libId;
+        fr.filename = filename;
+        fr.originalPath = path;
+        fr.currentPath = path;
+        fr.extension = QStringLiteral(".chd");
+        fr.systemId = sysId;
+        fr.fileSize = 4;
+        return db.insertFile(fr);
+    };
+    QVERIFY(insertDisc(QStringLiteral("Metal Gear Solid (USA) (Disc 1).chd")) > 0);
+    QVERIFY(insertDisc(QStringLiteral("Metal Gear Solid (USA) (Disc 2).chd")) > 0);
+    QVERIFY(db.rebuildDiscSetsForLibrary(libId));
+
+    M3UGenerator gen(db);
+    QCOMPARE(gen.generateAll(QString(), dest), 1);
+
+    const QString m3uPath = folder + QStringLiteral("/Metal Gear Solid.m3u");
+    QVERIFY(QFile::exists(m3uPath));
+    QCOMPARE(QDir(dest).entryList({ QStringLiteral("*.m3u") }, QDir::Files).size(), 0);
+
+    QFile m3u(m3uPath);
+    QVERIFY(m3u.open(QIODevice::ReadOnly | QIODevice::Text));
+    const QString content = QString::fromUtf8(m3u.readAll());
+    QVERIFY(content.contains(QStringLiteral("Metal Gear Solid (USA) (Disc 1).chd")));
+    QVERIFY(content.contains(QStringLiteral("Metal Gear Solid (USA) (Disc 2).chd")));
+    QVERIFY(!content.contains(QStringLiteral("..")));
 }
 
 QTEST_MAIN(M3UGeneratorTest)

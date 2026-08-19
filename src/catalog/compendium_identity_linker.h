@@ -4,7 +4,7 @@
 // a conservative four-pass strategy:
 //   Pass 0 — exact hash collision (sha256)
 //   Pass 1 — exact hash collision (sha1, then md5, then crc32)
-//   Pass 2 — exact serial match (within the same system)
+//   Pass 2 — exact serial match (same system and identity base; disc index ignored)
 //   Pass 3 — conservative normalized title match (same system, same region)
 // After linking each record has a non-empty linkedGameId.
 
@@ -40,6 +40,10 @@ namespace Compendium {
 
         // Normalize a title for conservative fuzzy comparison.
         static QString normalizeTitle(const QString &raw);
+
+        /// Serial match key: system + serial + identity base (disc index stripped, beta/rev kept).
+        static QString serialIdentityKey(int systemId, const QString &serial, const QString &titleRaw);
+        static QString titleFromSourceEntryKey(const QString &sourceEntryKey);
 
         // Identity maps — persist across link() calls for cross-source dedup.
         QHash<QString, QString> m_sha256ToId;

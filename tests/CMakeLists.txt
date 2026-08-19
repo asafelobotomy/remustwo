@@ -225,6 +225,11 @@ add_remustwo_test(test_compendium_disc_set_inserter CompendiumDiscSetInserterTes
     LIBS Qt6::Test Qt6::Sql remustwo-catalog
 )
 
+add_remustwo_test(test_compendium_identity_linker CompendiumIdentityLinkerTest
+    SOURCES test_compendium_identity_linker.cpp
+    LIBS Qt6::Test remustwo-catalog
+)
+
 if(REMUSTWO_ENABLE_LIBARCHIVE)
     add_remustwo_test(test_archive_extractor ArchiveExtractorTest
         SOURCES test_archive_extractor.cpp

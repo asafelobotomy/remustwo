@@ -128,6 +128,11 @@ public:
     int insertFile(const FileRecord &record);
 
     /**
+     * @brief Link a sheet/track file to its primary counterpart after scan.
+     */
+    bool updateFileParent(int fileId, int parentFileId);
+
+    /**
      * @brief Update file hashes
      */
     bool updateFileHashes(int fileId, const QString &crc32, const QString &md5, const QString &sha1,

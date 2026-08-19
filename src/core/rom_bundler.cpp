@@ -8,6 +8,7 @@
 #include "constants/systems.h"
 #include "cso_converter.h"
 #include "database.h"
+#include "disc_set_utils.h"
 #include "hasher.h"
 #include "rvz_converter.h"
 
@@ -31,6 +32,13 @@ namespace {
             || extension == Constants::Files::RVZ || extension == Constants::Files::CSO;
     }
 
+    QString siblingCuePath(const QString &binPath) {
+        const QFileInfo info(binPath);
+        const QString cuePath
+            = info.absolutePath() + QLatin1Char('/') + info.completeBaseName() + Constants::Files::CUE;
+        return QFile::exists(cuePath) ? cuePath : QString();
+    }
+
     QString plannedConvertedExtension(const QString &sourcePath, const FileRecord &file, BundleConvertMode mode) {
         const QString ext = dottedExtension(sourcePath);
         if (mode == BundleConvertMode::Never || isAlreadyCompressedContainer(ext))
@@ -45,7 +53,9 @@ namespace {
             return converter.isDolphinToolAvailable() ? Constants::Files::RVZ : ext;
         }
         const bool discIso = ext == Constants::Files::ISO && Constants::Systems::DISC_SYSTEMS.contains(file.systemId);
-        if (ext == Constants::Files::CUE || ext == Constants::Files::GDI || discIso) {
+        const bool discBin = ext == Constants::Files::BIN && Constants::Systems::DISC_SYSTEMS.contains(file.systemId)
+            && !siblingCuePath(sourcePath).isEmpty();
+        if (ext == Constants::Files::CUE || ext == Constants::Files::GDI || discIso || discBin) {
             CHDConverter converter;
             return converter.isChdmanAvailable() ? Constants::Files::CHD : ext;
         }
@@ -82,7 +92,10 @@ namespace {
                 converted = converter.convertCueToCHD(sourcePath);
             else if (ext == Constants::Files::GDI)
                 converted = converter.convertGdiToCHD(sourcePath);
-            else
+            else if (ext == Constants::Files::BIN) {
+                const QString cuePath = siblingCuePath(sourcePath);
+                converted = cuePath.isEmpty() ? ConversionResult {} : converter.convertCueToCHD(cuePath);
+            } else
                 converted = converter.convertIsoToCHD(sourcePath);
             if (converted.success)
                 return converted.outputPath;
@@ -99,6 +112,29 @@ namespace {
         stem.replace(QLatin1Char('/'), QLatin1Char('_'));
         stem.replace(QLatin1Char('\\'), QLatin1Char('_'));
         return stem;
+    }
+
+    QString discSetFolderName(const FileRecord &file, const GameMetadata &metadata) {
+        QString folderName;
+        if (!metadata.title.isEmpty())
+            folderName = DiscSetUtils::extractBaseTitle(metadata.title);
+        if (folderName.isEmpty() && !file.baseTitle.isEmpty())
+            folderName = DiscSetUtils::extractBaseTitle(file.baseTitle);
+        if (folderName.isEmpty()) {
+            folderName = DiscSetUtils::extractBaseTitle(DiscSetUtils::labelPath(
+                file.currentPath, file.archivePath, file.archiveInternalPath, file.filename));
+        }
+        if (folderName.isEmpty())
+            folderName = QFileInfo(file.filename).completeBaseName();
+        return DiscSetUtils::sanitizeFolderComponent(folderName);
+    }
+
+    bool copyReplacing(const QString &sourcePath, const QString &destPath) {
+        if (QFileInfo(sourcePath).absoluteFilePath() == QFileInfo(destPath).absoluteFilePath())
+            return QFile::exists(destPath);
+        if (QFile::exists(destPath) && !QFile::remove(destPath))
+            return false;
+        return QFile::copy(sourcePath, destPath);
     }
 
 } // namespace
@@ -151,12 +187,8 @@ BundleResult RomBundler::bundle(
         return result;
     }
 
-    if (!file.discSetKey.isEmpty() && m_database.getFilesByDiscSetKey(file.discSetKey).size() >= 2) {
-        result.skippedDiscSet = true;
-        result.success = true;
-        result.outputPath = sourcePath;
-        return result;
-    }
+    if (!file.discSetKey.isEmpty() && m_database.getFilesByDiscSetKey(file.discSetKey).size() >= 2)
+        return bundleDiscSetFolder(file, metadata, destinationDir, config);
 
     const QString extension = dottedExtension(sourcePath);
     if (isAlreadyCompressedContainer(extension) && isAlreadyBundled(sourcePath)) {
@@ -262,6 +294,101 @@ BundleResult RomBundler::bundle(
     cleanup();
     if (!m_database.markFileBundled(file.id, result.outputPath)) {
         result.error = QStringLiteral("Bundle wrote but library update failed");
+        return result;
+    }
+    result.success = true;
+    return result;
+}
+
+BundleResult RomBundler::bundleDiscSetFolder(const FileRecord &file, const GameMetadata &metadata,
+    const QString &destinationDir, const BundleConfig &config) {
+    BundleResult result;
+    result.skippedDiscSet = true;
+
+    const QString sourcePath = file.currentPath;
+    const QString folderName = discSetFolderName(file, metadata);
+    if (folderName.isEmpty()) {
+        result.error = QStringLiteral("Cannot derive disc-set folder name");
+        return result;
+    }
+
+    QDir dest(destinationDir);
+    result.outputPath = dest.absoluteFilePath(folderName);
+
+    QString payloadExtension = plannedConvertedExtension(sourcePath, file, config.convert);
+    const QString romName = QFileInfo(sourcePath).completeBaseName() + payloadExtension;
+    const QString markerName = QString::fromLatin1(Constants::Settings::Files::MARKER_PROCESSED);
+    result.archiveEntries.append(folderName + QLatin1Char('/') + romName);
+    result.archiveEntries.append(folderName + QLatin1Char('/') + markerName);
+    if (config.includeArt && !config.artworkPath.isEmpty() && QFile::exists(config.artworkPath))
+        result.archiveEntries.append(folderName + QStringLiteral("/artwork/boxfront.jpg"));
+    result.archiveEntries.sort();
+
+    if (config.dryRun) {
+        result.success = true;
+        return result;
+    }
+
+    if (!dest.exists() && !dest.mkpath(QStringLiteral("."))) {
+        result.error = QStringLiteral("Cannot create destination directory");
+        return result;
+    }
+    if (!QDir().mkpath(result.outputPath)) {
+        result.error = QStringLiteral("Cannot create disc-set folder");
+        return result;
+    }
+
+    const QString payloadPath = convertIfNeeded(sourcePath, file, config, payloadExtension);
+    const QString destRom = result.outputPath + QLatin1Char('/')
+        + QFileInfo(sourcePath).completeBaseName() + payloadExtension;
+    if (!copyReplacing(payloadPath, destRom)) {
+        result.error = QStringLiteral("Failed to copy disc into folder");
+        return result;
+    }
+    if (payloadPath != sourcePath)
+        QFile::remove(payloadPath);
+
+    FileRecord markerFile = file;
+    if (payloadPath != sourcePath) {
+        Hasher hasher;
+        const HashResult hashes = hasher.calculateHashes(destRom);
+        if (hashes.success) {
+            markerFile.crc32 = hashes.crc32;
+            markerFile.md5 = hashes.md5;
+            markerFile.sha1 = hashes.sha1;
+        }
+    }
+
+    GameMetadata folderMeta = metadata;
+    folderMeta.title = folderName;
+    const QString markerPath = result.outputPath + QLatin1Char('/') + markerName;
+    if (!QFile::exists(markerPath)) {
+        QFile marker(markerPath);
+        if (!marker.open(QIODevice::WriteOnly | QIODevice::Text)) {
+            result.error = QStringLiteral("Failed to write marker");
+            return result;
+        }
+        marker.write(generateMarkerContent(markerFile, folderMeta).toUtf8());
+        marker.close();
+    }
+
+    if (config.includeArt && !config.artworkPath.isEmpty() && QFile::exists(config.artworkPath)) {
+        const QString artDir = result.outputPath + QStringLiteral("/artwork");
+        const QString artDest = artDir + QStringLiteral("/boxfront.jpg");
+        if (!QFile::exists(artDest)) {
+            if (!QDir().mkpath(artDir) || !QFile::copy(config.artworkPath, artDest)) {
+                result.error = QStringLiteral("Failed to copy artwork");
+                return result;
+            }
+        }
+    }
+
+    if (!m_database.updateFilePath(file.id, destRom)) {
+        result.error = QStringLiteral("Folder wrote but path update failed");
+        return result;
+    }
+    if (!m_database.markFileBundled(file.id, result.outputPath)) {
+        result.error = QStringLiteral("Folder wrote but library update failed");
         return result;
     }
     result.success = true;

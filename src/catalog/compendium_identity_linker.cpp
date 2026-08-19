@@ -8,6 +8,7 @@
 #include <QSet>
 #include <QSqlError>
 #include <QSqlQuery>
+#include <QStringList>
 
 namespace remustwo {
 namespace Compendium {
@@ -21,6 +22,16 @@ namespace Compendium {
 
     QString IdentityLinker::normalizeTitle(const QString &raw) {
         return DiscTitleParser::normalizeForIdentity(raw);
+    }
+
+    QString IdentityLinker::titleFromSourceEntryKey(const QString &sourceEntryKey) {
+        const QStringList parts = sourceEntryKey.split(QLatin1Char('|'));
+        return parts.size() >= 2 ? parts.at(1).trimmed() : QString();
+    }
+
+    QString IdentityLinker::serialIdentityKey(int systemId, const QString &serial, const QString &titleRaw) {
+        const QString identity = DiscTitleParser::parseTitle(titleRaw).identityBase;
+        return QString::number(systemId) + QLatin1Char('|') + serial + QLatin1Char('|') + identity;
     }
 
     bool IdentityLinker::loadFromDatabase(QSqlDatabase &db, QString &error) {
@@ -53,11 +64,11 @@ namespace Compendium {
             QSqlQuery q(db);
             q.setForwardOnly(true);
             if (!q.exec(QStringLiteral(R"(
-                SELECT gs.serial_value, gs.game_id, g.system_id
+                SELECT gs.serial_value, gs.game_id, g.system_id, COALESCE(gs.source_entry_key, '')
                 FROM game_serials gs
                 JOIN games g ON g.game_id = gs.game_id
                 LEFT JOIN game_signatures sig ON sig.game_id = g.game_id
-                GROUP BY gs.serial_value, gs.game_id, g.system_id
+                GROUP BY gs.serial_value, gs.game_id, g.system_id, gs.source_entry_key
                 ORDER BY COUNT(sig.signature_id) DESC, gs.game_id ASC)"))) {
                 error = q.lastError().text();
                 return false;
@@ -66,9 +77,10 @@ namespace Compendium {
                 const QString serial = q.value(0).toString();
                 const QString id = q.value(1).toString();
                 const int systemId = q.value(2).toInt();
+                const QString titleRaw = titleFromSourceEntryKey(q.value(3).toString());
                 if (serial.isEmpty() || systemId <= 0)
                     continue;
-                const QString key = QString::number(systemId) + QLatin1Char('|') + serial;
+                const QString key = serialIdentityKey(systemId, serial, titleRaw);
                 if (!m_serialToId.contains(key)) {
                     m_serialToId.insert(key, id);
                 }
@@ -147,13 +159,14 @@ namespace Compendium {
                 }
             }
 
-            // Pass 2 — serial (within same system)
+            // Pass 2 — serial (within same system and identity base).
+            // Disc 1/2 share identityBase so they still merge; Beta/Rev titles do not.
             if (assignedId.isEmpty() && rec.resolvedSystemId > 0) {
                 for (const QString &serial : std::as_const(rec.serials)) {
                     if (serial.isEmpty()) {
                         continue;
                     }
-                    const QString serialKey = QString::number(rec.resolvedSystemId) + QLatin1Char('|') + serial;
+                    const QString serialKey = serialIdentityKey(rec.resolvedSystemId, serial, rec.titleRaw);
                     if (m_serialToId.contains(serialKey)) {
                         assignedId = m_serialToId.value(serialKey);
                         confidence = 80;
@@ -197,7 +210,7 @@ namespace Compendium {
             if (rec.resolvedSystemId > 0) {
                 for (const QString &serial : std::as_const(rec.serials)) {
                     if (!serial.isEmpty()) {
-                        const QString serialKey = QString::number(rec.resolvedSystemId) + QLatin1Char('|') + serial;
+                        const QString serialKey = serialIdentityKey(rec.resolvedSystemId, serial, rec.titleRaw);
                         if (!m_serialToId.contains(serialKey)) {
                             m_serialToId.insert(serialKey, assignedId);
                         }

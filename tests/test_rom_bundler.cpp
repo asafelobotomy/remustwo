@@ -98,6 +98,117 @@ private slots:
         QVERIFY(result.success);
         QVERIFY(result.skippedDiscSet);
     }
+
+    void discSetPlacedInNamedFolder() {
+        QTemporaryDir dir;
+        QVERIFY(dir.isValid());
+        Database db;
+        QVERIFY(db.initialize(dir.filePath(QStringLiteral("library.db"))));
+        const int libId = db.insertLibrary(dir.path(), QStringLiteral("t"));
+        const int sysId = db.getSystemId(QStringLiteral("PlayStation"));
+        if (sysId <= 0)
+            QSKIP("PlayStation system missing");
+
+        const auto insertDisc = [&](const QString &name) {
+            const QString path = dir.filePath(name);
+            QFile file(path);
+            if (!file.open(QIODevice::WriteOnly))
+                return 0;
+            file.write("disc");
+            file.close();
+            FileRecord record;
+            record.libraryId = libId;
+            record.filename = name;
+            record.originalPath = path;
+            record.currentPath = path;
+            record.extension = QStringLiteral(".bin");
+            record.systemId = sysId;
+            record.fileSize = 4;
+            return db.insertFile(record);
+        };
+        QVERIFY(insertDisc(QStringLiteral("Game (USA) (Disc 1).bin")) > 0);
+        QVERIFY(insertDisc(QStringLiteral("Game (USA) (Disc 2).bin")) > 0);
+        QVERIFY(db.rebuildDiscSetsForLibrary(libId));
+
+        const QString dest = dir.filePath(QStringLiteral("out"));
+        QVERIFY(QDir().mkpath(dest));
+        RomBundler bundler(db);
+        BundleConfig config;
+        config.convert = BundleConvertMode::Never;
+        GameMetadata metadata;
+        metadata.title = QStringLiteral("Game (USA) (Disc 1)");
+        for (const FileRecord &file : db.getAllFiles()) {
+            const BundleResult result = bundler.bundle(file, metadata, dest, config);
+            QVERIFY2(result.success, qPrintable(result.error));
+            QVERIFY(result.skippedDiscSet);
+        }
+
+        const QString folder = dest + QStringLiteral("/Game");
+        QVERIFY(QFileInfo(folder).isDir());
+        QVERIFY(QFile::exists(folder + QStringLiteral("/.remus.md")));
+        QVERIFY(QFile::exists(folder + QStringLiteral("/Game (USA) (Disc 1).bin")));
+        QVERIFY(QFile::exists(folder + QStringLiteral("/Game (USA) (Disc 2).bin")));
+        QVERIFY(!QFile::exists(dest + QStringLiteral("/Game.zip")));
+        QCOMPARE(QDir(dest).entryList(QDir::Files).size(), 0);
+    }
+
+    void cueAndBinSameDiscStillBundles() {
+        QTemporaryDir dir;
+        QVERIFY(dir.isValid());
+        Database db;
+        QVERIFY(db.initialize(dir.filePath(QStringLiteral("library.db"))));
+        const int libId = db.insertLibrary(dir.path(), QStringLiteral("t"));
+        const int sysId = db.getSystemId(QStringLiteral("PlayStation"));
+        if (sysId <= 0)
+            QSKIP("PlayStation system missing");
+
+        const QString cuePath = dir.filePath(QStringLiteral("Game (USA) (Disc 1).cue"));
+        const QString binPath = dir.filePath(QStringLiteral("Game (USA) (Disc 1).bin"));
+        QFile cue(cuePath);
+        QVERIFY(cue.open(QIODevice::WriteOnly | QIODevice::Text));
+        cue.write("FILE \"Game (USA) (Disc 1).bin\" BINARY\n");
+        cue.close();
+        QFile bin(binPath);
+        QVERIFY(bin.open(QIODevice::WriteOnly));
+        bin.write("disc");
+        bin.close();
+
+        FileRecord cueRecord;
+        cueRecord.libraryId = libId;
+        cueRecord.filename = QStringLiteral("Game (USA) (Disc 1).cue");
+        cueRecord.originalPath = cuePath;
+        cueRecord.currentPath = cuePath;
+        cueRecord.extension = QStringLiteral(".cue");
+        cueRecord.systemId = sysId;
+        cueRecord.isPrimary = false;
+        cueRecord.fileSize = 8;
+        QVERIFY(db.insertFile(cueRecord) > 0);
+
+        FileRecord binRecord;
+        binRecord.libraryId = libId;
+        binRecord.filename = QStringLiteral("Game (USA) (Disc 1).bin");
+        binRecord.originalPath = binPath;
+        binRecord.currentPath = binPath;
+        binRecord.extension = QStringLiteral(".bin");
+        binRecord.systemId = sysId;
+        binRecord.isPrimary = true;
+        binRecord.fileSize = 4;
+        const int binId = db.insertFile(binRecord);
+        QVERIFY(binId > 0);
+        QVERIFY(db.rebuildDiscSetsForLibrary(libId));
+
+        const FileRecord stored = db.getFileById(binId);
+        QVERIFY(db.getFilesByDiscSetKey(stored.discSetKey).size() < 2);
+
+        RomBundler bundler(db);
+        BundleConfig config;
+        config.dryRun = true;
+        GameMetadata metadata;
+        metadata.title = QStringLiteral("Game");
+        const BundleResult result = bundler.bundle(stored, metadata, dir.path(), config);
+        QVERIFY(result.success);
+        QVERIFY(!result.skippedDiscSet);
+    }
 };
 
 QTEST_MAIN(RomBundlerTest)

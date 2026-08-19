@@ -19,6 +19,7 @@ private slots:
     void discSetKey_variantPressingsShareKey();
     void singleDiscUnchanged();
     void normalizeForIdentityStripsDiscTag();
+    void betaKeepsDistinctIdentityBase();
     void discSetKey_isStable();
     void discSetKey_differsByRegion();
     void legacyLibraryKey_matchesDiscSetUtils();
@@ -81,6 +82,14 @@ void DiscTitleParserTest::singleDiscUnchanged() {
 void DiscTitleParserTest::normalizeForIdentityStripsDiscTag() {
     const QString normalized = DiscTitleParser::normalizeForIdentity(QStringLiteral("Final Fantasy VIII (Disc 2)"));
     QCOMPARE(normalized, QStringLiteral("final fantasy viii"));
+}
+
+void DiscTitleParserTest::betaKeepsDistinctIdentityBase() {
+    const DiscTitleInfo retail = DiscTitleParser::parseTitle(QStringLiteral("Castlevania - Bloodlines (USA)"));
+    const DiscTitleInfo beta
+        = DiscTitleParser::parseTitle(QStringLiteral("Castlevania - Bloodlines (USA) (Beta 1)"));
+    QVERIFY(retail.identityBase != beta.identityBase);
+    QVERIFY(beta.identityBase.contains(QStringLiteral("beta")));
 }
 
 void DiscTitleParserTest::discSetKey_isStable() {

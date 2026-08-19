@@ -361,7 +361,7 @@ namespace {
         out << "                                        Recheck hashes against the catalog\n";
         out << "  enrich [--online] [--dry-run]         Optional metadata for matched games only\n";
         out << "  organize DEST [--dry-run] [--bundle] [--include-art] [--convert auto|never]\n";
-        out << "                                        Rename/move matched files; optional zip bundle\n\n";
+        out << "                                        Rename/move matched files; zip singles, folder sets\n\n";
         out << "Diagnostics:\n";
         out << "  hash PATH                             Print CRC32 MD5 SHA1 (stdout only)\n\n";
         out << "Databases (two files, never mixed):\n";
@@ -397,7 +397,8 @@ int run(int argc, char *argv[]) {
     parser.addOption({ QStringLiteral("library-db"), QStringLiteral("Library database path"), QStringLiteral("path") });
     parser.addOption({ QStringLiteral("dry-run"), QStringLiteral("Dry run (no writes)") });
     parser.addOption({ QStringLiteral("online"), QStringLiteral("Enable online metadata/artwork fetch") });
-    parser.addOption({ QStringLiteral("bundle"), QStringLiteral("Pack matched files as zip + .remus.md") });
+    parser.addOption({ QStringLiteral("bundle"),
+        QStringLiteral("Pack single files as zip + .remus.md; multi-file sets go in a named folder") });
     parser.addOption({ QStringLiteral("include-art"), QStringLiteral("Copy cached cover art into the bundle") });
     parser.addOption(
         { QStringLiteral("convert"), QStringLiteral("Bundle conversion: auto or never"), QStringLiteral("mode") });

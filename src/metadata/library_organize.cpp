@@ -6,6 +6,7 @@
 #include "../core/template_engine.h"
 #include "artwork_cache.h"
 
+#include <QFile>
 #include <QMap>
 #include <QSet>
 
@@ -48,10 +49,8 @@ Result<OrganizeLibraryStats> organizeLibrary(const QString &catalogDbPath, const
             else
                 config.artworkPath.clear();
             const BundleResult bundled = bundler.bundle(file, metadataMap.value(file.id), dest, config);
-            if (bundled.skippedAlreadyBundled || bundled.skippedDiscSet) {
+            if (bundled.skippedAlreadyBundled) {
                 ++stats.skipped;
-                if (bundled.skippedDiscSet)
-                    organizedIds.insert(file.id);
                 continue;
             }
             if (!bundled.success) {

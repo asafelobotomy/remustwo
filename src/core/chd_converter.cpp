@@ -42,9 +42,10 @@ void CHDConverter::setCodec(CHDCodec codec) {
     m_codec = codec;
 }
 
-QStringList CHDConverter::buildCreateCdArgs(const QString &inputPath, const QString &outputPath) {
+QStringList CHDConverter::buildCreateArgs(
+    const QString &command, const QString &inputPath, const QString &outputPath) const {
     QStringList args;
-    args << "createcd" << "-i" << inputPath << "-o" << outputPath;
+    args << command << "-i" << inputPath << "-o" << outputPath;
 
     QString codec = getCodecString();
     if (!codec.isEmpty()) {
@@ -56,6 +57,14 @@ QStringList CHDConverter::buildCreateCdArgs(const QString &inputPath, const QStr
     return args;
 }
 
+QStringList CHDConverter::buildCreateCdArgs(const QString &inputPath, const QString &outputPath) {
+    return buildCreateArgs(QStringLiteral("createcd"), inputPath, outputPath);
+}
+
+QStringList CHDConverter::buildCreateDvdArgs(const QString &inputPath, const QString &outputPath) {
+    return buildCreateArgs(QStringLiteral("createdvd"), inputPath, outputPath);
+}
+
 ConversionResult CHDConverter::convertCueToCHD(const QString &cuePath, const QString &outputPath) {
     QString output = outputPath.isEmpty() ? getDefaultOutputPath(cuePath, "chd") : outputPath;
     return runChdman(buildCreateCdArgs(cuePath, output), cuePath, output);
@@ -63,7 +72,11 @@ ConversionResult CHDConverter::convertCueToCHD(const QString &cuePath, const QSt
 
 ConversionResult CHDConverter::convertIsoToCHD(const QString &isoPath, const QString &outputPath) {
     QString output = outputPath.isEmpty() ? getDefaultOutputPath(isoPath, "chd") : outputPath;
-    return runChdman(buildCreateCdArgs(isoPath, output), isoPath, output);
+    // CD capacity is ~800–900 MiB; larger images are DVD (PS2/Xbox) and need createdvd.
+    constexpr qint64 kDvdIsoMinBytes = 900LL * 1024 * 1024;
+    const QStringList args = getFileSize(isoPath) >= kDvdIsoMinBytes ? buildCreateDvdArgs(isoPath, output)
+                                                                     : buildCreateCdArgs(isoPath, output);
+    return runChdman(args, isoPath, output);
 }
 
 ConversionResult CHDConverter::convertGdiToCHD(const QString &gdiPath, const QString &outputPath) {

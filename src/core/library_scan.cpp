@@ -2,10 +2,12 @@
 
 #include "constants/systems.h"
 #include "database.h"
+#include "disc_set_utils.h"
 #include "hasher.h"
 #include "scanner.h"
 
 #include <QFileInfo>
+#include <QHash>
 
 namespace remustwo {
 
@@ -27,6 +29,7 @@ Result<ScanLibraryStats> scanLibrary(const QString &scanDir, const QString &libr
     Hasher hasher;
     ScanLibraryStats stats;
     stats.scanned = results.size();
+    QHash<QString, int> idsByPath;
     for (const ScanResult &item : results) {
         FileRecord record;
         record.libraryId = libraryId;
@@ -36,13 +39,26 @@ Result<ScanLibraryStats> scanLibrary(const QString &scanDir, const QString &libr
         record.extension = item.extension;
         record.fileSize = item.fileSize;
         record.lastModified = item.lastModified;
+        record.isPrimary = item.isPrimary;
+        record.isCompressed = item.isCompressed;
+        record.archivePath = item.archivePath;
+        record.archiveInternalPath = item.archiveInternalPath;
+        DiscSetUtils::applyScanDiscMetadata(record, item.detectedSystem);
         const int fileId = db.insertFile(record);
         if (fileId <= 0)
             continue;
+        idsByPath.insert(item.path, fileId);
         ++stats.stored;
         const HashResult hashes = hasher.calculateHashes(item.path);
         if (hashes.success && db.updateFileHashes(fileId, hashes.crc32, hashes.md5, hashes.sha1))
             ++stats.hashed;
+    }
+    for (const ScanResult &item : results) {
+        if (item.parentFilePath.isEmpty() || !idsByPath.contains(item.path)
+            || !idsByPath.contains(item.parentFilePath)) {
+            continue;
+        }
+        db.updateFileParent(idsByPath.value(item.path), idsByPath.value(item.parentFilePath));
     }
     return Result<ScanLibraryStats>::ok(stats);
 }
