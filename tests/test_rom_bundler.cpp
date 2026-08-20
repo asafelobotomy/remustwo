@@ -207,7 +207,54 @@ private slots:
         metadata.title = QStringLiteral("Game");
         const BundleResult result = bundler.bundle(stored, metadata, dir.path(), config);
         QVERIFY(result.success);
-        QVERIFY(!result.skippedDiscSet);
+        QVERIFY(result.skippedDiscSet);
+        QVERIFY(!result.outputPath.endsWith(QStringLiteral(".zip")));
+    }
+
+    void singleDiscPs2UsesFolder() {
+        QTemporaryDir dir;
+        QVERIFY(dir.isValid());
+        Database db;
+        QVERIFY(db.initialize(dir.filePath(QStringLiteral("library.db"))));
+        const int libId = db.insertLibrary(dir.path(), QStringLiteral("t"));
+        const int sysId = db.getSystemId(QStringLiteral("PlayStation 2"));
+        if (sysId <= 0)
+            QSKIP("PlayStation 2 system missing");
+
+        const QString isoPath = dir.filePath(QStringLiteral("Simpsons, The - Hit & Run (USA).iso"));
+        QFile iso(isoPath);
+        QVERIFY(iso.open(QIODevice::WriteOnly));
+        iso.write("disc");
+        iso.close();
+
+        FileRecord record;
+        record.libraryId = libId;
+        record.filename = QStringLiteral("Simpsons, The - Hit & Run (USA).iso");
+        record.originalPath = isoPath;
+        record.currentPath = isoPath;
+        record.extension = QStringLiteral(".iso");
+        record.systemId = sysId;
+        record.isPrimary = true;
+        record.fileSize = 4;
+        const int fileId = db.insertFile(record);
+        QVERIFY(fileId > 0);
+
+        const QString dest = dir.filePath(QStringLiteral("out"));
+        QVERIFY(QDir().mkpath(dest));
+        RomBundler bundler(db);
+        BundleConfig config;
+        config.convert = BundleConvertMode::Never;
+        GameMetadata metadata;
+        metadata.title = QStringLiteral("Simpsons, The - Hit & Run (USA)");
+        const BundleResult result = bundler.bundle(db.getFileById(fileId), metadata, dest, config);
+        QVERIFY2(result.success, qPrintable(result.error));
+        QVERIFY(result.skippedDiscSet);
+        QVERIFY(QFileInfo(result.outputPath).isDir());
+        QVERIFY(QFile::exists(result.outputPath + QStringLiteral("/Simpsons, The - Hit & Run (USA).iso")));
+        QVERIFY(QFile::exists(result.outputPath + QStringLiteral("/.remus.md")));
+        QVERIFY(!QFile::exists(dest + QStringLiteral("/Simpsons, The - Hit & Run (USA).zip")));
+        QCOMPARE(db.getFileById(fileId).currentPath,
+            result.outputPath + QStringLiteral("/Simpsons, The - Hit & Run (USA).iso"));
     }
 };
 

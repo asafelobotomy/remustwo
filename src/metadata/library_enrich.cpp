@@ -4,6 +4,7 @@
 #include "../catalog/sql_pragmas.h"
 #include "../catalog/thumbnail_url_helper.h"
 #include "../core/database.h"
+#include "../core/disc_set_utils.h"
 #include "hasheous_provider.h"
 
 #include <QDateTime>
@@ -98,7 +99,8 @@ Result<EnrichStats> enrichLibrary(
     for (const OwnedGame &ownedGame : ownedGames) {
         QSqlQuery gameQuery(catalog);
         gameQuery.prepare(
-            QStringLiteral("SELECT g.cover_url, g.description, g.canonical_title, s.display_name "
+            QStringLiteral("SELECT g.cover_url, g.description, g.canonical_title, "
+                           "COALESCE(NULLIF(s.libretro_name, ''), s.display_name) "
                            "FROM games g LEFT JOIN systems s ON s.system_id = g.system_id WHERE g.game_id = ?"));
         gameQuery.addBindValue(ownedGame.gameId);
         if (!gameQuery.exec() || !gameQuery.next())
@@ -115,8 +117,9 @@ Result<EnrichStats> enrichLibrary(
         }
 
         if (coverUrl.trimmed().isEmpty() && !systemName.isEmpty() && !title.isEmpty()) {
+            const QString thumbTitle = DiscSetUtils::extractBaseTitle(title);
             const QStringList urls = Metadata::ThumbnailUrlHelper::generateThumbnailCandidates(
-                systemName, title, QStringLiteral("Named_Boxarts"));
+                systemName, thumbTitle.isEmpty() ? title : thumbTitle, QStringLiteral("Named_Boxarts"));
             if (!urls.isEmpty()) {
                 coverUrl = urls.first();
                 ++stats.thumbnailUrls;

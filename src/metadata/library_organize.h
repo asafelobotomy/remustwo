@@ -12,6 +12,7 @@ struct OrganizeLibraryOptions {
     bool dryRun = false;
     bool bundle = false;
     bool includeArt = false;
+    bool online = false;
     BundleConvertMode convert = BundleConvertMode::Auto;
 };
 

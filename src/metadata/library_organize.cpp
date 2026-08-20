@@ -44,8 +44,8 @@ Result<OrganizeLibraryStats> organizeLibrary(const QString &catalogDbPath, const
         config.includeArt = options.includeArt;
         config.convert = options.convert;
         for (const FileRecord &file : files) {
-            if (options.includeArt)
-                config.artworkPath = cachedArtworkPath(file.catalogGameId);
+            if (options.includeArt && !file.catalogGameId.isEmpty())
+                config.artworkPath = resolveArtworkPath(catalogDbPath, file.catalogGameId, options.online);
             else
                 config.artworkPath.clear();
             const BundleResult bundled = bundler.bundle(file, metadataMap.value(file.id), dest, config);

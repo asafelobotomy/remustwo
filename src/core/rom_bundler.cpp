@@ -137,10 +137,29 @@ namespace {
         return QFile::copy(sourcePath, destPath);
     }
 
+    bool isLooseDiscPayload(const QString &payloadExtension, int systemId) {
+        if (payloadExtension == Constants::Files::CHD || payloadExtension == Constants::Files::RVZ
+            || payloadExtension == Constants::Files::CSO)
+            return true;
+        if (Constants::Systems::DISC_SYSTEMS.contains(systemId)) {
+            return payloadExtension == Constants::Files::CUE || payloadExtension == Constants::Files::GDI
+                || payloadExtension == Constants::Files::ISO || payloadExtension == Constants::Files::BIN
+                || payloadExtension == Constants::Files::GCM;
+        }
+        return false;
+    }
+
 } // namespace
 
 RomBundler::RomBundler(Database &database)
     : m_database(database) { }
+
+bool RomBundler::usesFolderBundle(const FileRecord &file, BundleConvertMode convert) const {
+    if (!file.discSetKey.isEmpty() && m_database.getFilesByDiscSetKey(file.discSetKey).size() >= 2)
+        return true;
+    const QString payloadExtension = plannedConvertedExtension(file.currentPath, file, convert);
+    return isLooseDiscPayload(payloadExtension, file.systemId);
+}
 
 bool RomBundler::isAlreadyBundled(const QString &archivePath) {
     if (!QFileInfo::exists(archivePath))
@@ -187,8 +206,8 @@ BundleResult RomBundler::bundle(
         return result;
     }
 
-    if (!file.discSetKey.isEmpty() && m_database.getFilesByDiscSetKey(file.discSetKey).size() >= 2)
-        return bundleDiscSetFolder(file, metadata, destinationDir, config);
+    if (usesFolderBundle(file, config.convert))
+        return bundleGameFolder(file, metadata, destinationDir, config);
 
     const QString extension = dottedExtension(sourcePath);
     if (isAlreadyCompressedContainer(extension) && isAlreadyBundled(sourcePath)) {
@@ -300,13 +319,19 @@ BundleResult RomBundler::bundle(
     return result;
 }
 
-BundleResult RomBundler::bundleDiscSetFolder(const FileRecord &file, const GameMetadata &metadata,
+QString RomBundler::folderNameForBundle(const FileRecord &file, const GameMetadata &metadata) const {
+    if (!file.discSetKey.isEmpty() && m_database.getFilesByDiscSetKey(file.discSetKey).size() >= 2)
+        return discSetFolderName(file, metadata);
+    return DiscSetUtils::sanitizeFolderComponent(safeFileStem(metadata, file));
+}
+
+BundleResult RomBundler::bundleGameFolder(const FileRecord &file, const GameMetadata &metadata,
     const QString &destinationDir, const BundleConfig &config) {
     BundleResult result;
     result.skippedDiscSet = true;
 
     const QString sourcePath = file.currentPath;
-    const QString folderName = discSetFolderName(file, metadata);
+    const QString folderName = folderNameForBundle(file, metadata);
     if (folderName.isEmpty()) {
         result.error = QStringLiteral("Cannot derive disc-set folder name");
         return result;
@@ -360,7 +385,8 @@ BundleResult RomBundler::bundleDiscSetFolder(const FileRecord &file, const GameM
     }
 
     GameMetadata folderMeta = metadata;
-    folderMeta.title = folderName;
+    if (!file.discSetKey.isEmpty() && m_database.getFilesByDiscSetKey(file.discSetKey).size() >= 2)
+        folderMeta.title = folderName;
     const QString markerPath = result.outputPath + QLatin1Char('/') + markerName;
     if (!QFile::exists(markerPath)) {
         QFile marker(markerPath);

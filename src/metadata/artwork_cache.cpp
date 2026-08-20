@@ -1,10 +1,15 @@
 #include "artwork_cache.h"
 
+#include "../catalog/catalog.h"
+#include "../catalog/sql_pragmas.h"
 #include "http_client.h"
 
+#include <QDateTime>
 #include <QDir>
 #include <QFile>
 #include <QFileInfo>
+#include <QSqlDatabase>
+#include <QSqlQuery>
 #include <QStandardPaths>
 #include <QUrl>
 
@@ -60,6 +65,37 @@ QString cachedArtworkPath(const QString &gameId) {
     if (matches.isEmpty())
         return {};
     return dir.absoluteFilePath(matches.first());
+}
+
+QString resolveArtworkPath(const QString &catalogDbPath, const QString &gameId, bool online) {
+    const QString existing = cachedArtworkPath(gameId);
+    if (!existing.isEmpty())
+        return existing;
+    if (catalogDbPath.trimmed().isEmpty() || gameId.trimmed().isEmpty())
+        return {};
+
+    const QString connectionName
+        = QStringLiteral("artwork_cache_%1").arg(QDateTime::currentMSecsSinceEpoch());
+    auto catalogResult = catalog::open(catalogDbPath, connectionName);
+    if (!catalogResult)
+        return {};
+    QSqlDatabase catalog = std::move(*catalogResult);
+    CatalogSql::applyReadOnlyPragmas(catalog);
+
+    QSqlQuery query(catalog);
+    query.prepare(QStringLiteral("SELECT cover_url FROM games WHERE game_id = ?"));
+    query.addBindValue(gameId);
+    QString coverUrl;
+    if (query.exec() && query.next())
+        coverUrl = query.value(0).toString().trimmed();
+
+    catalog.close();
+    QSqlDatabase::removeDatabase(connectionName);
+
+    if (coverUrl.isEmpty())
+        return {};
+    const Result<QString> cached = cacheArtwork(QUrl(coverUrl), gameId, online);
+    return cached ? cached.value() : QString();
 }
 
 } // namespace remustwo

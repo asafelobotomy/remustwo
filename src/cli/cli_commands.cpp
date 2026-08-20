@@ -239,6 +239,7 @@ namespace {
         options.dryRun = dryRun;
         options.bundle = bundle;
         options.includeArt = includeArt;
+        options.online = parser.isSet(QStringLiteral("online"));
         options.convert = convertMode == QStringLiteral("never") ? BundleConvertMode::Never : BundleConvertMode::Auto;
         auto organized = organizeLibrary(catalogPath, libraryPath, dest, options);
         if (!organized)
@@ -398,8 +399,9 @@ int run(int argc, char *argv[]) {
     parser.addOption({ QStringLiteral("dry-run"), QStringLiteral("Dry run (no writes)") });
     parser.addOption({ QStringLiteral("online"), QStringLiteral("Enable online metadata/artwork fetch") });
     parser.addOption({ QStringLiteral("bundle"),
-        QStringLiteral("Pack single files as zip + .remus.md; multi-file sets go in a named folder") });
-    parser.addOption({ QStringLiteral("include-art"), QStringLiteral("Copy cached cover art into the bundle") });
+        QStringLiteral("Cartridge ROMs -> zip + .remus.md; disc/CHD sets -> named folder + .remus.md") });
+    parser.addOption({ QStringLiteral("include-art"),
+        QStringLiteral("Copy cover art into bundle (uses cache; fetch with --online)") });
     parser.addOption(
         { QStringLiteral("convert"), QStringLiteral("Bundle conversion: auto or never"), QStringLiteral("mode") });
     parser.addPositionalArgument(QStringLiteral("command"), QStringLiteral("Command and arguments"));

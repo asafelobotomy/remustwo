@@ -24,6 +24,7 @@ struct BundleConfig {
 struct BundleResult {
     bool success = false;
     bool skippedAlreadyBundled = false;
+    /// Output is a loose folder (multi-disc set or emulator-incompatible zip payload).
     bool skippedDiscSet = false;
     QString outputPath;
     QStringList archiveEntries;
@@ -36,6 +37,8 @@ public:
 
     static bool isAlreadyBundled(const QString &archivePath);
 
+    bool usesFolderBundle(const FileRecord &file, BundleConvertMode convert) const;
+
     BundleResult bundle(const FileRecord &file, const GameMetadata &metadata, const QString &destinationDir,
         const BundleConfig &config);
 
@@ -46,7 +49,8 @@ private:
     Database &m_database;
 
     QString generateMarkerContent(const FileRecord &file, const GameMetadata &metadata) const;
-    BundleResult bundleDiscSetFolder(const FileRecord &file, const GameMetadata &metadata,
+    QString folderNameForBundle(const FileRecord &file, const GameMetadata &metadata) const;
+    BundleResult bundleGameFolder(const FileRecord &file, const GameMetadata &metadata,
         const QString &destinationDir, const BundleConfig &config);
 };
 
