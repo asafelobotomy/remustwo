@@ -1,5 +1,7 @@
 # remustwo
 
+[![ko-fi](https://ko-fi.com/img/githubbutton_sm.svg)](https://ko-fi.com/U5R225QZH3)
+
 Offline SQLite catalog and library manager for ROM collections. C++20 / Qt 6.
 
 **remustwo** hashes ROMs, builds an offline catalog from DAT files, and matches your library. **igir** is a complementary tool for 1G1R collection building — they work well together but serve different roles.
