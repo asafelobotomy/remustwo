@@ -47,97 +47,34 @@ private slots:
 // ============================================================================
 
 void ConstantsTest::testProviderRegistry() {
-    // Verify all expected providers are registered
     QVERIFY(Providers::PROVIDER_REGISTRY.contains(Providers::HASHEOUS));
-    QVERIFY(Providers::PROVIDER_REGISTRY.contains(Providers::SCREENSCRAPER));
-    QVERIFY(Providers::PROVIDER_REGISTRY.contains(Providers::THEGAMESDB));
-    QVERIFY(Providers::PROVIDER_REGISTRY.contains(Providers::IGDB));
-    QVERIFY(Providers::PROVIDER_REGISTRY.contains(Providers::LOCAL_DATABASE));
-    QVERIFY(Providers::PROVIDER_REGISTRY.contains(Providers::COMPENDIUM));
-    QVERIFY(Providers::PROVIDER_REGISTRY.contains(Providers::GAMETDB));
-    QVERIFY(Providers::PROVIDER_REGISTRY.contains(Providers::RETROACHIEVEMENTS));
-    QVERIFY(Providers::PROVIDER_REGISTRY.contains(Providers::WIKIDATA));
-    QVERIFY(Providers::PROVIDER_REGISTRY.contains(Providers::PLAYMATCH));
-
-    QCOMPARE(Providers::PROVIDER_REGISTRY.size(), 11);
+    QCOMPARE(Providers::PROVIDER_REGISTRY.size(), 1);
 }
 
 void ConstantsTest::testProviderLookup() {
-    // Test valid provider lookup
-    auto info = Providers::getProviderInfo(Providers::SCREENSCRAPER);
+    const auto *info = Providers::getProviderInfo(Providers::HASHEOUS);
     QVERIFY(info != nullptr);
-    QCOMPARE(info->id, QString(Providers::SCREENSCRAPER));
-    QCOMPARE(info->displayName, Providers::DISPLAY_SCREENSCRAPER);
-    QVERIFY(info->requiresAuth);
-
-    // Test invalid provider lookup
-    auto invalid = Providers::getProviderInfo("nonexistent");
-    QVERIFY(invalid == nullptr);
+    QCOMPARE(info->id, QString(Providers::HASHEOUS));
+    QCOMPARE(info->displayName, Providers::DISPLAY_HASHEOUS);
+    QVERIFY(!info->requiresAuth);
+    QVERIFY(Providers::getProviderInfo(QStringLiteral("nonexistent")) == nullptr);
 }
 
 void ConstantsTest::testProviderDisplayNames() {
-    // Test display name retrieval
-    QCOMPARE(Providers::getProviderDisplayName(Providers::SCREENSCRAPER), Providers::DISPLAY_SCREENSCRAPER);
-    QCOMPARE(Providers::getProviderDisplayName(Providers::IGDB), Providers::DISPLAY_IGDB);
-
-    // Test unknown provider returns "Unknown"
-    QCOMPARE(Providers::getProviderDisplayName("invalid"), QStringLiteral("Unknown"));
+    QCOMPARE(Providers::getProviderDisplayName(Providers::HASHEOUS), Providers::DISPLAY_HASHEOUS);
+    QCOMPARE(Providers::getProviderDisplayName(QStringLiteral("invalid")), QStringLiteral("Unknown"));
 }
 
 void ConstantsTest::testProviderPriority() {
-    // Get providers sorted by priority
-    auto providers = Providers::getProvidersByPriority();
-
-    // Verify order (highest priority first).
-    // Ordered by metadata field-coverage score within each tier:
-    //   LOCAL  band: compendium (210), localdatabase (200), gametdb (150)
-    //   REMOTE band: hasheous (91), screenscraper (89), playmatch (88), igdb (70),
-    //                retroachievements (60), thegamesdb (50), wikidata (40)
-    QVERIFY(providers.size() >= 10);
-    QCOMPARE(providers[0], QString(Providers::COMPENDIUM)); // Priority 210
-    QCOMPARE(providers[1], QString(Providers::LOCAL_DATABASE)); // Priority 200
-    QCOMPARE(providers[2], QString(Providers::GAMETDB)); // Priority 150
-    QCOMPARE(providers[3], QString(Providers::HASHEOUS)); // Priority 91
-    QCOMPARE(providers[4], QString(Providers::SCREENSCRAPER)); // Priority 89
-    QCOMPARE(providers[5], QString(Providers::PLAYMATCH)); // Priority 88
-    QCOMPARE(providers[6], QString(Providers::STEAMGRIDDB)); // Priority 75
-    QCOMPARE(providers[7], QString(Providers::IGDB)); // Priority 70
-    QCOMPARE(providers[8], QString(Providers::RETROACHIEVEMENTS)); // Priority 60
-    QCOMPARE(providers[9], QString(Providers::THEGAMESDB)); // Priority 50
-    QCOMPARE(providers[10], QString(Providers::WIKIDATA)); // Priority 40
-
-    // Verify priorities are descending
-    for (int i = 0; i < providers.size() - 1; ++i) {
-        auto current = Providers::getProviderInfo(providers[i]);
-        auto next = Providers::getProviderInfo(providers[i + 1]);
-        QVERIFY(current->priority >= next->priority);
-    }
+    const auto providers = Providers::getProvidersByPriority();
+    QCOMPARE(providers.size(), 1);
+    QCOMPARE(providers.first(), QString(Providers::HASHEOUS));
 }
 
 void ConstantsTest::testProviderCapabilities() {
-    // Test hash-supporting providers
-    auto hashProviders = Providers::getHashSupportingProviders();
+    const auto hashProviders = Providers::getHashSupportingProviders();
     QVERIFY(hashProviders.contains(Providers::HASHEOUS));
-    QVERIFY(hashProviders.contains(Providers::SCREENSCRAPER));
-    QVERIFY(hashProviders.contains(Providers::LOCAL_DATABASE));
-    QVERIFY(hashProviders.contains(Providers::COMPENDIUM));
-    QVERIFY(hashProviders.contains(Providers::GAMETDB));
-    QVERIFY(hashProviders.contains(Providers::RETROACHIEVEMENTS));
-    QVERIFY(hashProviders.contains(Providers::PLAYMATCH));
-    QVERIFY(!hashProviders.contains(Providers::IGDB)); // IGDB doesn't support hash
-    QVERIFY(!hashProviders.contains(Providers::WIKIDATA)); // Wikidata is name-only
-
-    // Test name-supporting providers
-    auto nameProviders = Providers::getNameSupportingProviders();
-    QVERIFY(nameProviders.contains(Providers::SCREENSCRAPER));
-    QVERIFY(nameProviders.contains(Providers::THEGAMESDB));
-    QVERIFY(nameProviders.contains(Providers::IGDB));
-    QVERIFY(nameProviders.contains(Providers::LOCAL_DATABASE));
-    QVERIFY(nameProviders.contains(Providers::COMPENDIUM));
-    QVERIFY(nameProviders.contains(Providers::GAMETDB));
-    QVERIFY(nameProviders.contains(Providers::WIKIDATA));
-    QVERIFY(!nameProviders.contains(Providers::HASHEOUS)); // Hasheous is hash-only
-    QVERIFY(!nameProviders.contains(Providers::RETROACHIEVEMENTS)); // RA is hash-only
+    QVERIFY(Providers::getNameSupportingProviders().isEmpty());
 }
 
 // ============================================================================

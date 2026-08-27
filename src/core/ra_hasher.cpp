@@ -1,6 +1,5 @@
 #include "ra_hasher.h"
 
-#include "constants/providers.h"
 #include "constants/system_ids.h"
 #include "external_tool_runner.h"
 #include "system_resolver.h"
@@ -18,7 +17,6 @@ namespace remustwo {
 namespace {
 
     using namespace Constants;
-    using namespace Constants::Providers;
     using namespace Constants::Systems;
 
     QString s_externalToolPath;
@@ -266,14 +264,14 @@ void RaHasher::setExternalSystemPath(const QString &path) {
 bool RaHasher::hasRaMapping(int remusSystemId) {
     if (remusSystemId <= 0)
         return false;
-    return !SystemResolver::providerName(remusSystemId, RETROACHIEVEMENTS).isEmpty();
+    return !SystemResolver::providerName(remusSystemId, QStringLiteral("retroachievements")).isEmpty();
 }
 
 int RaHasher::raConsoleId(int remusSystemId) {
     if (remusSystemId <= 0)
         return 0;
     bool ok = false;
-    const int id = SystemResolver::providerName(remusSystemId, RETROACHIEVEMENTS).toInt(&ok);
+    const int id = SystemResolver::providerName(remusSystemId, QStringLiteral("retroachievements")).toInt(&ok);
     return ok ? id : 0;
 }
 
