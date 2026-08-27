@@ -27,9 +27,11 @@ namespace Constants {
             QStringList extensions; ///< File extensions: [".nes", ".unf"]
             QString preferredHash; ///< "CRC32", "MD5", or "SHA1"
             QStringList regionCodes; ///< Region codes: ["USA", "JPN", "EUR"]
-            bool isMultiFile; ///< True for .cue/.bin or multi-disc games
+            bool isMultiFile = false; ///< True for .cue/.bin or multi-disc games
+            bool isDiscBased = false; ///< Loaded from catalog SQL seed
+            bool isHandheld = false; ///< Loaded from catalog SQL seed
             QString uiColor; ///< Badge color: "#e74c3c"
-            int releaseYear; ///< Year first released internationally
+            int releaseYear = 0; ///< Year first released internationally
         };
 
         // ============================================================================
@@ -37,9 +39,9 @@ namespace Constants {
         // ============================================================================
 
         /**
-         * @brief Complete registry of all supported gaming systems
+         * @brief Complete registry of all supported gaming systems (from shared SQL seed).
          */
-        extern const QMap<int, SystemDef> SYSTEMS;
+        const QMap<int, SystemDef> &systemsRegistry();
 
         // ============================================================================
         // Extension to System Mapping
@@ -53,49 +55,23 @@ namespace Constants {
          */
         extern const QMap<QString, QList<int>> EXTENSION_TO_SYSTEMS;
 
+        /**
+         * @brief File extensions stored in the library DB for a system (C++ heuristic map).
+         */
+        QStringList dbExtensionsForSystem(int systemId);
+
         // ============================================================================
         // System Grouping
         // ============================================================================
 
-        /**
-         * @brief Nintendo systems (for grouping/organization)
-         */
-        extern const QList<int> NINTENDO_SYSTEMS;
-
-        /**
-         * @brief Sega systems
-         */
-        extern const QList<int> SEGA_SYSTEMS;
-
-        /**
-         * @brief Sony/PlayStation systems
-         */
-        extern const QList<int> SONY_SYSTEMS;
-
-        /**
-         * @brief Microsoft Xbox systems
-         */
-        extern const QList<int> MICROSOFT_SYSTEMS;
-
-        /**
-         * @brief Handheld systems
-         */
-        extern const QList<int> HANDHELD_SYSTEMS;
-
-        /**
-         * @brief Disc-based systems (require special handling)
-         */
-        extern const QList<int> DISC_SYSTEMS;
-
-        /**
-         * @brief Cartridge-based systems (single file, fast hashing)
-         */
-        extern const QList<int> CARTRIDGE_SYSTEMS;
-
-        /**
-         * @brief Home computer systems
-         */
-        extern const QList<int> COMPUTER_SYSTEMS;
+        const QList<int> &nintendoSystems();
+        const QList<int> &segaSystems();
+        const QList<int> &sonySystems();
+        const QList<int> &microsoftSystems();
+        const QList<int> &handheldSystems();
+        const QList<int> &discSystems();
+        const QList<int> &cartridgeSystems();
+        const QList<int> &computerSystems();
 
         // ============================================================================
         // Helper Functions

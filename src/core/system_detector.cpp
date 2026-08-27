@@ -188,7 +188,7 @@ void SystemDetector::initializeDefaultSystems() {
     QList<SystemInfo> systems;
 
     // Load all systems from the constants registry
-    for (auto it = SYSTEMS.begin(); it != SYSTEMS.end(); ++it) {
+    for (auto it = systemsRegistry().constBegin(); it != systemsRegistry().constEnd(); ++it) {
         const auto &def = it.value();
         systems.append({ def.id, def.internalName, def.displayName, def.manufacturer, def.generation, def.extensions,
             def.preferredHash });
@@ -210,8 +210,8 @@ QStringList SystemDetector::getCandidatesForExtension(const QString &extension) 
     auto extIt = EXTENSION_TO_SYSTEMS.find(extension);
     if (extIt != EXTENSION_TO_SYSTEMS.end()) {
         for (int systemId : extIt.value()) {
-            const auto defIt = SYSTEMS.find(systemId);
-            if (defIt != SYSTEMS.end()) {
+            const auto defIt = systemsRegistry().find(systemId);
+            if (defIt != systemsRegistry().end()) {
                 const QString &name = defIt.value().internalName;
                 if (m_systems.contains(name) && !candidates.contains(name)) {
                     candidates.append(name);

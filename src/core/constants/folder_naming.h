@@ -443,7 +443,7 @@ namespace Constants {
          */
         inline QMap<int, QString> allFolderNames(Scheme scheme) {
             QMap<int, QString> result;
-            for (auto it = Systems::SYSTEMS.constBegin(); it != Systems::SYSTEMS.constEnd(); ++it) {
+            for (auto it = Systems::systemsRegistry().constBegin(); it != Systems::systemsRegistry().constEnd(); ++it) {
                 QString folder = folderNameForSystemId(it.key(), scheme);
                 if (!folder.isEmpty())
                     result.insert(it.key(), folder);

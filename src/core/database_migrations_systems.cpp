@@ -1,12 +1,12 @@
 #include "database.h"
 
+#include "constants/constants.h"
+#include "system_detector.h"
+
 #include <functional>
 
 #include <QSqlError>
 #include <QSqlQuery>
-
-#include "constants/constants.h"
-#include "system_detector.h"
 
 namespace remustwo {
 
@@ -16,21 +16,22 @@ bool migrateCanonicalSystems(
 
     for (const QString &name : Constants::Systems::getSystemInternalNames()) {
         const SystemInfo info = detector.getSystemInfo(name);
-        if (info.name.isEmpty()) {
+        if (info.name.isEmpty() || info.extensions.isEmpty())
             continue;
-        }
 
         QSqlQuery selectCanonicalSlot(db);
         selectCanonicalSlot.prepare("SELECT name FROM systems WHERE id = ?");
         selectCanonicalSlot.addBindValue(info.id);
         if (!selectCanonicalSlot.exec()) {
             return rollbackAndFail(
-                "Migration: Failed to inspect canonical system slot: " + selectCanonicalSlot.lastError().text());
+                QStringLiteral("Migration: Failed to inspect canonical system slot: %1")
+                    .arg(selectCanonicalSlot.lastError().text()));
         }
         if (selectCanonicalSlot.next()) {
             const QString occupyingName = selectCanonicalSlot.value(0).toString();
             if (!occupyingName.isEmpty() && occupyingName != info.name) {
-                const QString movedName = QStringLiteral("%1__legacy_slot_%2").arg(occupyingName).arg(info.id);
+                const QString movedName
+                    = QStringLiteral("%1__legacy_slot_%2").arg(occupyingName).arg(info.id);
 
                 QSqlQuery renameOccupyingRow(db);
                 renameOccupyingRow.prepare("UPDATE systems SET id = id + ?, name = ? WHERE id = ?");
@@ -39,7 +40,8 @@ bool migrateCanonicalSystems(
                 renameOccupyingRow.addBindValue(info.id);
                 if (!renameOccupyingRow.exec()) {
                     return rollbackAndFail(
-                        "Migration: Failed to free canonical system slot: " + renameOccupyingRow.lastError().text());
+                        QStringLiteral("Migration: Failed to free canonical system slot: %1")
+                            .arg(renameOccupyingRow.lastError().text()));
                 }
             }
         }
@@ -49,11 +51,11 @@ bool migrateCanonicalSystems(
         selectSystem.prepare("SELECT id FROM systems WHERE name = ?");
         selectSystem.addBindValue(info.name);
         if (!selectSystem.exec()) {
-            return rollbackAndFail("Migration: Failed to inspect systems table: " + selectSystem.lastError().text());
+            return rollbackAndFail(
+                QStringLiteral("Migration: Failed to inspect systems table: %1").arg(selectSystem.lastError().text()));
         }
-        if (selectSystem.next()) {
+        if (selectSystem.next())
             existingId = selectSystem.value(0).toInt();
-        }
 
         if (existingId > 0 && existingId != info.id) {
             const QString legacyName = QStringLiteral("%1__legacy_%2").arg(info.name).arg(existingId);
@@ -64,11 +66,13 @@ bool migrateCanonicalSystems(
             renameSystem.addBindValue(existingId);
             if (!renameSystem.exec()) {
                 return rollbackAndFail(
-                    "Migration: Failed to rename legacy system row: " + renameSystem.lastError().text());
+                    QStringLiteral("Migration: Failed to rename legacy system row: %1")
+                        .arg(renameSystem.lastError().text()));
             }
 
             if (database.insertSystem(info) == 0) {
-                return rollbackAndFail("Migration: Failed to insert canonical system row for: " + info.name);
+                return rollbackAndFail(
+                    QStringLiteral("Migration: Failed to insert canonical system row for: %1").arg(info.name));
             }
 
             QSqlQuery updateFiles(db);
@@ -77,7 +81,7 @@ bool migrateCanonicalSystems(
             updateFiles.addBindValue(existingId);
             if (!updateFiles.exec()) {
                 return rollbackAndFail(
-                    "Migration: Failed to update file system IDs: " + updateFiles.lastError().text());
+                    QStringLiteral("Migration: Failed to update file system IDs: %1").arg(updateFiles.lastError().text()));
             }
 
             QSqlQuery updateGames(db);
@@ -86,7 +90,7 @@ bool migrateCanonicalSystems(
             updateGames.addBindValue(existingId);
             if (!updateGames.exec()) {
                 return rollbackAndFail(
-                    "Migration: Failed to update game system IDs: " + updateGames.lastError().text());
+                    QStringLiteral("Migration: Failed to update game system IDs: %1").arg(updateGames.lastError().text()));
             }
 
             QSqlQuery deleteLegacy(db);
@@ -94,14 +98,15 @@ bool migrateCanonicalSystems(
             deleteLegacy.addBindValue(existingId);
             if (!deleteLegacy.exec()) {
                 return rollbackAndFail(
-                    "Migration: Failed to delete legacy system row: " + deleteLegacy.lastError().text());
+                    QStringLiteral("Migration: Failed to delete legacy system row: %1").arg(deleteLegacy.lastError().text()));
             }
 
             continue;
         }
 
         if (existingId == 0 && database.insertSystem(info) == 0) {
-            return rollbackAndFail("Migration: Failed to backfill missing system row for: " + info.name);
+            return rollbackAndFail(
+                QStringLiteral("Migration: Failed to backfill missing system row for: %1").arg(info.name));
         }
     }
 
@@ -112,7 +117,8 @@ bool migrateCanonicalSystems(
         LEFT JOIN systems s ON f.system_id = s.id
         WHERE f.system_id IS NULL OR s.id IS NULL
     )")) {
-        return rollbackAndFail("Migration: Failed to scan files for system repair: " + repairFiles.lastError().text());
+        return rollbackAndFail(
+            QStringLiteral("Migration: Failed to scan files for system repair: %1").arg(repairFiles.lastError().text()));
     }
     while (repairFiles.next()) {
         const int fileId = repairFiles.value(0).toInt();
@@ -124,16 +130,16 @@ bool migrateCanonicalSystems(
         const QString detectPath = isCompressed && !archiveInternalPath.isEmpty() ? archiveInternalPath : currentPath;
         const QString systemName = detector.detectSystem(extension, detectPath);
         const int systemId = database.getSystemId(systemName);
-        if (systemId == 0) {
+        if (systemId == 0)
             continue;
-        }
 
         QSqlQuery updateFile(db);
-        updateFile.prepare("UPDATE files SET system_id = ? WHERE id = ?");
+        updateFile.prepare(QStringLiteral("UPDATE files SET system_id = ? WHERE id = ?"));
         updateFile.addBindValue(systemId);
         updateFile.addBindValue(fileId);
         if (!updateFile.exec()) {
-            return rollbackAndFail("Migration: Failed to repair file system ID: " + updateFile.lastError().text());
+            return rollbackAndFail(
+                QStringLiteral("Migration: Failed to repair file system ID: %1").arg(updateFile.lastError().text()));
         }
     }
 

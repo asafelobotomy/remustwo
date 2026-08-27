@@ -1,47 +1,111 @@
 // System group lists and utility function implementations.
-// Data tables are split into:
-//   systems_defs.cpp       — SYSTEMS QMap
-//   systems_extensions.cpp — EXTENSION_TO_SYSTEMS QMap
+// Canonical system rows come from data/catalog/seeds/0002_systems.sql via systems_registry.cpp.
+// Extension heuristics live in systems_extensions.cpp.
 #include "constants/systems.h"
+#include "systems_registry.h"
+
+#include <QSet>
 
 namespace remustwo {
 namespace Constants {
     namespace Systems {
 
-        const QList<int> NINTENDO_SYSTEMS = { ID_NES, ID_FDS, ID_SNES, ID_N64, ID_GB, ID_GBC, ID_GBA, ID_NDS,
-            ID_GAMECUBE, ID_WII, ID_WIIU, ID_VIRTUAL_BOY, ID_3DS, ID_SWITCH, ID_POKEMON_MINI };
-        const QList<int> SEGA_SYSTEMS = { ID_SG1000, ID_MASTER_SYSTEM, ID_GENESIS, ID_SEGA_CD, ID_SATURN, ID_DREAMCAST,
-            ID_GAME_GEAR, ID_32X, ID_NAOMI, ID_SEGA_PICO, ID_ATOMISWAVE, ID_TRIFORCE, ID_CHIHIRO, ID_LINDBERGH };
-        const QList<int> SONY_SYSTEMS = { ID_PSX, ID_PS2, ID_PS3, ID_PS4, ID_PSP, ID_PSVITA };
-        const QList<int> MICROSOFT_SYSTEMS = { ID_XBOX, ID_XBOX360, ID_XBOX_ONE };
-        const QList<int> HANDHELD_SYSTEMS = { ID_GB, ID_GBC, ID_GBA, ID_NDS, ID_PSP, ID_LYNX, ID_GAME_GEAR, ID_NGP,
-            ID_WONDERSWAN, ID_VIRTUAL_BOY, ID_3DS, ID_PSVITA, ID_SWITCH, ID_SUPERVISION, ID_POCKET_CHALLENGE_V2,
-            ID_POKEMON_MINI, ID_GP32, ID_GAMECOM, ID_PALM_OS, ID_MEGA_DUCK, ID_MICROVISION };
-        const QList<int> DISC_SYSTEMS = { ID_PSX, ID_PS2, ID_PS3, ID_PS4, ID_GAMECUBE, ID_WII, ID_DREAMCAST, ID_SATURN,
-            ID_SEGA_CD, ID_TURBOGRAFX_CD, ID_3DS, ID_SWITCH, ID_XBOX, ID_XBOX360, ID_XBOX_ONE, ID_3DO, ID_NEO_GEO_CD,
-            ID_PC_FX, ID_CDI, ID_CD32, ID_NAOMI, ID_ATARI_JAGUAR_CD, ID_IBM_PC, ID_MAC, ID_FM_TOWNS, ID_CDTV,
-            ID_AMIGA_CD, ID_ARCHIMEDES, ID_TRIFORCE, ID_CHIHIRO, ID_TANDY_VIS, ID_LINDBERGH, ID_PLAYDIA, ID_NUON };
-        const QList<int> CARTRIDGE_SYSTEMS = { ID_NES, ID_FDS, ID_SNES, ID_N64, ID_GB, ID_GBC, ID_GBA, ID_NDS,
-            ID_GENESIS, ID_MASTER_SYSTEM, ID_SG1000, ID_ATARI_2600, ID_ATARI_5200, ID_ATARI_7800, ID_ATARI_8BIT,
-            ID_ATARI_JAGUAR, ID_LYNX, ID_TURBOGRAFX16, ID_NEO_GEO, ID_GAME_GEAR, ID_32X, ID_NGP, ID_WONDERSWAN,
-            ID_VIRTUAL_BOY, ID_SUPERGRAFX, ID_COLECOVISION, ID_INTELLIVISION, ID_MSX, ID_MSX2, ID_ODYSSEY2,
-            ID_INTERTON_VC4000, ID_ARCADIA_2001, ID_VECTREX, ID_POKEMON_MINI, ID_CHANNEL_F, ID_SCV, ID_STUDIO_II,
-            ID_CASIO_PV1000, ID_SUPER_ACAN, ID_CASIO_LOOPY, ID_SUPERVISION, ID_POCKET_CHALLENGE_V2, ID_GP32, ID_GAMECOM,
-            ID_SEGA_PICO, ID_APPLE_II, ID_BBC_MICRO, ID_C16, ID_MEGA_DUCK, ID_MICROVISION };
-        const QList<int> COMPUTER_SYSTEMS = { ID_C64, ID_AMIGA, ID_ZX_SPECTRUM, ID_ATARI_ST, ID_ATARI_8BIT, ID_MSX,
-            ID_MSX2, ID_AMSTRAD_CPC, ID_ENTERPRISE_128, ID_ZX81, ID_VIDEOTON_TVC, ID_VIC20, ID_PC98, ID_SHARP_X1,
-            ID_X68000, ID_IBM_PC, ID_MAC, ID_FM_TOWNS, ID_PC88, ID_APPLE_II, ID_BBC_MICRO, ID_C16 };
+        namespace {
+
+            QList<int> systemsMatching(bool (*predicate)(const SystemDef &)) {
+                QList<int> ids;
+                for (auto it = systemsRegistry().constBegin(); it != systemsRegistry().constEnd(); ++it) {
+                    if (predicate(it.value()))
+                        ids.append(it.key());
+                }
+                return ids;
+            }
+
+            bool isNintendo(const SystemDef &def) {
+                return def.manufacturer == QStringLiteral("Nintendo");
+            }
+
+            bool isSega(const SystemDef &def) {
+                return def.manufacturer == QStringLiteral("Sega") || def.manufacturer == QStringLiteral("Sammy");
+            }
+
+            bool isSony(const SystemDef &def) {
+                return def.manufacturer == QStringLiteral("Sony");
+            }
+
+            bool isMicrosoft(const SystemDef &def) {
+                return def.manufacturer == QStringLiteral("Microsoft");
+            }
+
+            bool isComputer(const SystemDef &def) {
+                static const QSet<QString> computerNames = {
+                    QStringLiteral("C64"), QStringLiteral("Amiga"), QStringLiteral("ZX Spectrum"),
+                    QStringLiteral("Atari ST"), QStringLiteral("Atari 8-bit"), QStringLiteral("MSX"),
+                    QStringLiteral("MSX2"), QStringLiteral("Amstrad CPC"), QStringLiteral("Enterprise 128"),
+                    QStringLiteral("ZX 81"), QStringLiteral("Videoton TVC"), QStringLiteral("VIC-20"),
+                    QStringLiteral("PC-98"), QStringLiteral("Sharp X1"), QStringLiteral("X68000"),
+                    QStringLiteral("PC"), QStringLiteral("Mac"), QStringLiteral("FM Towns"),
+                    QStringLiteral("PC-88"), QStringLiteral("Apple II"), QStringLiteral("BBC Micro"),
+                    QStringLiteral("Commodore 16"),
+                };
+                return computerNames.contains(def.internalName);
+            }
+
+            bool isCartridge(const SystemDef &def) {
+                return !def.isDiscBased && !isComputer(def);
+            }
+
+        } // namespace
+
+        const QList<int> &nintendoSystems() {
+            static const QList<int> cached = systemsMatching(isNintendo);
+            return cached;
+        }
+
+        const QList<int> &segaSystems() {
+            static const QList<int> cached = systemsMatching(isSega);
+            return cached;
+        }
+
+        const QList<int> &sonySystems() {
+            static const QList<int> cached = systemsMatching(isSony);
+            return cached;
+        }
+
+        const QList<int> &microsoftSystems() {
+            static const QList<int> cached = systemsMatching(isMicrosoft);
+            return cached;
+        }
+
+        const QList<int> &handheldSystems() {
+            static const QList<int> cached = systemsMatching([](const SystemDef &def) { return def.isHandheld; });
+            return cached;
+        }
+
+        const QList<int> &discSystems() {
+            static const QList<int> cached = systemsMatching([](const SystemDef &def) { return def.isDiscBased; });
+            return cached;
+        }
+
+        const QList<int> &cartridgeSystems() {
+            static const QList<int> cached = systemsMatching(isCartridge);
+            return cached;
+        }
+
+        const QList<int> &computerSystems() {
+            static const QList<int> cached = systemsMatching(isComputer);
+            return cached;
+        }
 
         const SystemDef *getSystem(int systemId) {
-            const auto it = SYSTEMS.find(systemId);
-            return (it != SYSTEMS.end()) ? &it.value() : nullptr;
+            const auto it = systemsRegistry().find(systemId);
+            return (it != systemsRegistry().end()) ? &it.value() : nullptr;
         }
 
         int getSystemIdByName(const QString &name) {
-            for (auto it = SYSTEMS.begin(); it != SYSTEMS.end(); ++it) {
-                if (it.value().internalName == name) {
+            for (auto it = systemsRegistry().constBegin(); it != systemsRegistry().constEnd(); ++it) {
+                if (it.value().internalName == name)
                     return it.key();
-                }
             }
             return 0;
         }
@@ -53,17 +117,15 @@ namespace Constants {
 
         QStringList getSystemDisplayNames() {
             QStringList names;
-            for (auto it = SYSTEMS.begin(); it != SYSTEMS.end(); ++it) {
+            for (auto it = systemsRegistry().constBegin(); it != systemsRegistry().constEnd(); ++it)
                 names << it.value().displayName;
-            }
             return names;
         }
 
         QStringList getSystemInternalNames() {
             QStringList names;
-            for (auto it = SYSTEMS.begin(); it != SYSTEMS.end(); ++it) {
+            for (auto it = systemsRegistry().constBegin(); it != systemsRegistry().constEnd(); ++it)
                 names << it.value().internalName;
-            }
             return names;
         }
 

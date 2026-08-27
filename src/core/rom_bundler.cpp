@@ -52,8 +52,8 @@ namespace {
             RVZConverter converter;
             return converter.isDolphinToolAvailable() ? Constants::Files::RVZ : ext;
         }
-        const bool discIso = ext == Constants::Files::ISO && Constants::Systems::DISC_SYSTEMS.contains(file.systemId);
-        const bool discBin = ext == Constants::Files::BIN && Constants::Systems::DISC_SYSTEMS.contains(file.systemId)
+        const bool discIso = ext == Constants::Files::ISO && Constants::Systems::discSystems().contains(file.systemId);
+        const bool discBin = ext == Constants::Files::BIN && Constants::Systems::discSystems().contains(file.systemId)
             && !siblingCuePath(sourcePath).isEmpty();
         if (ext == Constants::Files::CUE || ext == Constants::Files::GDI || discIso || discBin) {
             CHDConverter converter;
@@ -141,7 +141,7 @@ namespace {
         if (payloadExtension == Constants::Files::CHD || payloadExtension == Constants::Files::RVZ
             || payloadExtension == Constants::Files::CSO)
             return true;
-        if (Constants::Systems::DISC_SYSTEMS.contains(systemId)) {
+        if (Constants::Systems::discSystems().contains(systemId)) {
             return payloadExtension == Constants::Files::CUE || payloadExtension == Constants::Files::GDI
                 || payloadExtension == Constants::Files::ISO || payloadExtension == Constants::Files::BIN
                 || payloadExtension == Constants::Files::GCM;

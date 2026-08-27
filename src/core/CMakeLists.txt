@@ -2,12 +2,18 @@ add_library(remustwo-constants STATIC
     systems.cpp
     systems_defs.cpp
     systems_extensions.cpp
+    systems_db_extensions.cpp
+    systems_registry.cpp
 )
 target_include_directories(remustwo-constants PUBLIC
     ${CMAKE_SOURCE_DIR}/src
     ${CMAKE_CURRENT_SOURCE_DIR}
+    ${CMAKE_SOURCE_DIR}/src/catalog
 )
-target_link_libraries(remustwo-constants PUBLIC Qt6::Core)
+target_compile_definitions(remustwo-constants PUBLIC
+    REMUSTWO_CATALOG_DATA_DIR="${CMAKE_SOURCE_DIR}/data/catalog"
+)
+target_link_libraries(remustwo-constants PUBLIC Qt6::Core Qt6::Sql)
 
 add_library(remustwo-core STATIC
     chd_header.cpp

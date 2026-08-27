@@ -11,8 +11,8 @@
 namespace remustwo {
 
 QString selectBestMatchHash(const FileRecord &file) {
-    if (Constants::Systems::SYSTEMS.contains(file.systemId)) {
-        const Constants::Systems::SystemDef &systemDef = Constants::Systems::SYSTEMS[file.systemId];
+    if (Constants::Systems::systemsRegistry().contains(file.systemId)) {
+        const Constants::Systems::SystemDef &systemDef = Constants::Systems::systemsRegistry().value(file.systemId);
         const QString preferred = systemDef.preferredHash.toLower();
 
         if (preferred == "md5" && !file.md5.isEmpty())

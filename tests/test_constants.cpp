@@ -146,16 +146,16 @@ void ConstantsTest::testProviderCapabilities() {
 
 void ConstantsTest::testSystemRegistry() {
     // Verify registry is not empty
-    QVERIFY(Systems::SYSTEMS.size() > 0);
+    QVERIFY(Systems::systemsRegistry().size() > 0);
 
     // Verify expected systems exist
-    QVERIFY(Systems::SYSTEMS.contains(Systems::ID_NES));
-    QVERIFY(Systems::SYSTEMS.contains(Systems::ID_SNES));
-    QVERIFY(Systems::SYSTEMS.contains(Systems::ID_PSX));
-    QVERIFY(Systems::SYSTEMS.contains(Systems::ID_N64));
+    QVERIFY(Systems::systemsRegistry().contains(Systems::ID_NES));
+    QVERIFY(Systems::systemsRegistry().contains(Systems::ID_SNES));
+    QVERIFY(Systems::systemsRegistry().contains(Systems::ID_PSX));
+    QVERIFY(Systems::systemsRegistry().contains(Systems::ID_N64));
 
     // Verify registry has reasonable size (20+ systems)
-    QVERIFY(Systems::SYSTEMS.size() >= 20);
+    QVERIFY(Systems::systemsRegistry().size() >= 20);
 }
 
 void ConstantsTest::testSystemLookup() {
@@ -238,33 +238,30 @@ void ConstantsTest::testAmbiguousExtensions() {
 }
 
 void ConstantsTest::testSystemGrouping() {
-    // Test manufacturer groupings
-    QVERIFY(Systems::NINTENDO_SYSTEMS.contains(Systems::ID_NES));
-    QVERIFY(Systems::NINTENDO_SYSTEMS.contains(Systems::ID_SNES));
-    QVERIFY(Systems::NINTENDO_SYSTEMS.contains(Systems::ID_N64));
-    QVERIFY(!Systems::NINTENDO_SYSTEMS.contains(Systems::ID_PSX));
+    QVERIFY(Systems::nintendoSystems().contains(Systems::ID_NES));
+    QVERIFY(Systems::nintendoSystems().contains(Systems::ID_SNES));
+    QVERIFY(Systems::nintendoSystems().contains(Systems::ID_N64));
+    QVERIFY(!Systems::nintendoSystems().contains(Systems::ID_PSX));
 
-    QVERIFY(Systems::SONY_SYSTEMS.contains(Systems::ID_PSX));
-    QVERIFY(Systems::SONY_SYSTEMS.contains(Systems::ID_PS2));
-    QVERIFY(!Systems::SONY_SYSTEMS.contains(Systems::ID_NES));
+    QVERIFY(Systems::sonySystems().contains(Systems::ID_PSX));
+    QVERIFY(Systems::sonySystems().contains(Systems::ID_PS2));
+    QVERIFY(!Systems::sonySystems().contains(Systems::ID_NES));
 
-    QVERIFY(Systems::SEGA_SYSTEMS.contains(Systems::ID_GENESIS));
-    QVERIFY(Systems::SEGA_SYSTEMS.contains(Systems::ID_DREAMCAST));
+    QVERIFY(Systems::segaSystems().contains(Systems::ID_GENESIS));
+    QVERIFY(Systems::segaSystems().contains(Systems::ID_DREAMCAST));
 
-    // Test media type groupings
-    QVERIFY(Systems::DISC_SYSTEMS.contains(Systems::ID_PSX));
-    QVERIFY(Systems::DISC_SYSTEMS.contains(Systems::ID_SATURN));
-    QVERIFY(!Systems::DISC_SYSTEMS.contains(Systems::ID_NES));
+    QVERIFY(Systems::discSystems().contains(Systems::ID_PSX));
+    QVERIFY(Systems::discSystems().contains(Systems::ID_SATURN));
+    QVERIFY(!Systems::discSystems().contains(Systems::ID_NES));
 
-    QVERIFY(Systems::CARTRIDGE_SYSTEMS.contains(Systems::ID_NES));
-    QVERIFY(Systems::CARTRIDGE_SYSTEMS.contains(Systems::ID_SNES));
-    QVERIFY(!Systems::CARTRIDGE_SYSTEMS.contains(Systems::ID_PSX));
+    QVERIFY(Systems::cartridgeSystems().contains(Systems::ID_NES));
+    QVERIFY(Systems::cartridgeSystems().contains(Systems::ID_SNES));
+    QVERIFY(!Systems::cartridgeSystems().contains(Systems::ID_PSX));
 
-    // Test handheld grouping
-    QVERIFY(Systems::HANDHELD_SYSTEMS.contains(Systems::ID_GB));
-    QVERIFY(Systems::HANDHELD_SYSTEMS.contains(Systems::ID_GBA));
-    QVERIFY(Systems::HANDHELD_SYSTEMS.contains(Systems::ID_PSP));
-    QVERIFY(!Systems::HANDHELD_SYSTEMS.contains(Systems::ID_NES));
+    QVERIFY(Systems::handheldSystems().contains(Systems::ID_GB));
+    QVERIFY(Systems::handheldSystems().contains(Systems::ID_GBA));
+    QVERIFY(Systems::handheldSystems().contains(Systems::ID_PSP));
+    QVERIFY(!Systems::handheldSystems().contains(Systems::ID_NES));
 }
 
 // ============================================================================

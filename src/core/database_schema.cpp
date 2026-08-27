@@ -1,6 +1,7 @@
 #include "database.h"
 #include "system_detector.h"
 #include "constants/constants.h"
+#include "systems_registry.h"
 #include <QSqlQuery>
 #include <QSqlError>
 #include <QDebug>
@@ -276,16 +277,16 @@ bool Database::createSchema() {
 }
 
 bool Database::populateDefaultSystems() {
-    // Use SystemDetector to get all default systems
-    SystemDetector detector;
-
-    // Get all system names from the constants
-    using namespace Constants::Systems;
+    const auto &systems = SystemsSeed::registry();
     int insertedCount = 0;
 
-    for (auto it = SYSTEMS.begin(); it != SYSTEMS.end(); ++it) {
-        const auto &def = it.value();
+    for (auto it = systems.constBegin(); it != systems.constEnd(); ++it) {
+        const Constants::Systems::SystemDef &def = it.value();
+        if (def.extensions.isEmpty())
+            continue;
+
         SystemInfo system;
+        system.id = def.id;
         system.name = def.internalName;
         system.displayName = def.displayName;
         system.manufacturer = def.manufacturer;
@@ -293,12 +294,11 @@ bool Database::populateDefaultSystems() {
         system.extensions = def.extensions;
         system.preferredHash = def.preferredHash;
 
-        if (insertSystem(system) > 0) {
-            insertedCount++;
-        }
+        if (insertSystem(system) > 0)
+            ++insertedCount;
     }
 
-    qInfo() << "Populated" << insertedCount << "default systems";
+    qInfo() << "Populated" << insertedCount << "default systems from shared SQL seed";
     return insertedCount > 0;
 }
 
