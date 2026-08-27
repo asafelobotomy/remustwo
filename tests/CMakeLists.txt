@@ -55,6 +55,11 @@ add_remustwo_test(test_ra_hasher RaHasherTest
     LIBS Qt6::Test remustwo-core
 )
 
+add_remustwo_test(test_extended_hashes ExtendedHashesTest
+    SOURCES test_extended_hashes.cpp
+    LIBS Qt6::Test remustwo-core
+)
+
 add_remustwo_test(test_chd_header ChdHeaderTest
     SOURCES test_chd_header.cpp
     LIBS Qt6::Test remustwo-core

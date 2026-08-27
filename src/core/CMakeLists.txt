@@ -31,6 +31,7 @@ add_library(remustwo-core STATIC
     disc_set_utils.cpp
     disc_title_parser.cpp
     hasher.cpp
+    extended_hashes.cpp
     header_detector.cpp
     logging_categories.cpp
     matching_engine.cpp

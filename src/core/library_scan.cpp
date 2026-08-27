@@ -3,8 +3,10 @@
 #include "constants/systems.h"
 #include "database.h"
 #include "disc_set_utils.h"
+#include "extended_hashes.h"
 #include "hasher.h"
 #include "scanner.h"
+#include "system_detector.h"
 
 #include <QFileInfo>
 #include <QHash>
@@ -27,6 +29,7 @@ Result<ScanLibraryStats> scanLibrary(const QString &scanDir, const QString &libr
 
     const int libraryId = db.insertLibrary(scanDir, QStringLiteral("scan"));
     Hasher hasher;
+    SystemDetector detector;
     ScanLibraryStats stats;
     stats.scanned = results.size();
     QHash<QString, int> idsByPath;
@@ -44,14 +47,26 @@ Result<ScanLibraryStats> scanLibrary(const QString &scanDir, const QString &libr
         record.archivePath = item.archivePath;
         record.archiveInternalPath = item.archiveInternalPath;
         DiscSetUtils::applyScanDiscMetadata(record, item.detectedSystem);
+        if (record.systemId <= 0 && !item.detectedSystem.isEmpty())
+            record.systemId = db.getSystemId(item.detectedSystem);
+        if (record.systemId <= 0) {
+            const QString detected = detector.detectSystem(item.extension, item.path);
+            if (!detected.isEmpty())
+                record.systemId = db.getSystemId(detected);
+        }
         const int fileId = db.insertFile(record);
         if (fileId <= 0)
             continue;
         idsByPath.insert(item.path, fileId);
         ++stats.stored;
-        const HashResult hashes = hasher.calculateHashes(item.path);
-        if (hashes.success && db.updateFileHashes(fileId, hashes.crc32, hashes.md5, hashes.sha1))
-            ++stats.hashed;
+        HashResult hashes = hasher.calculateHashes(item.path);
+        if (hashes.success) {
+            populateExtendedHashes(hashes,
+                { item.path, record.systemId, item.extension });
+            if (db.updateFileHashes(fileId, hashes.crc32, hashes.md5, hashes.sha1, hashes.raMd5, hashes.chdSha1,
+                    hashes.rvzSha1))
+                ++stats.hashed;
+        }
     }
     for (const ScanResult &item : results) {
         if (item.parentFilePath.isEmpty() || !idsByPath.contains(item.path)
