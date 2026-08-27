@@ -2,7 +2,6 @@ add_library(remustwo-catalog STATIC
     catalog.cpp
     catalog_ingest.cpp
     catalog_match.cpp
-    ${CMAKE_SOURCE_DIR}/src/metadata/metadata_provider.cpp
     clrmamepro_parser.cpp
     thumbnail_url_helper.cpp
     compendium_compiler_service.cpp
@@ -13,11 +12,6 @@ add_library(remustwo-catalog STATIC
     compendium_disc_set_inserter.cpp
     compendium_source_purge.cpp
     compendium_merge_resolver.cpp
-    compendium_provider.cpp
-    compendium_provider_fetch.cpp
-    compendium_provider_lookup.cpp
-    compendium_provider_match.cpp
-    compendium_provider_disc_sets.cpp
 )
 target_include_directories(remustwo-catalog PUBLIC
     ${CMAKE_SOURCE_DIR}/src
