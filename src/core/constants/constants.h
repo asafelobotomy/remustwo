@@ -13,7 +13,7 @@
  *   using namespace remustwo::Constants;
  *
  *   auto system = Systems::getSystem(Systems::ID_NES);
- *   QString provider = Providers::SCREENSCRAPER;
+ *   QString provider = Providers::HASHEOUS;
  *   auto info = Providers::getProviderInfo(provider);
  *
  * @note This is a header-only library. No compilation unit required.
@@ -63,7 +63,7 @@ namespace Constants {
      */
     inline constexpr const char *SETTINGS_APPLICATION = "Remus";
 
-    // APP_VERSION and CURRENT_MILESTONE are defined in api.h
+    // APP_VERSION is defined in api.h
     // (single source of truth for version, also used by API::USER_AGENT)
 
 } // Constants

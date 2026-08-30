@@ -110,46 +110,6 @@ WHERE s.enabled = 1
     FROM source_items si
     WHERE si.source_id = s.source_id
   );
--- FTS index coverage vs materialized games.
-SELECT 'fts.coverage_vs_games' AS check_name,
-  CASE
-    WHEN (
-      SELECT COUNT(*)
-      FROM games
-    ) = 0 THEN 'PASS'
-    WHEN ROUND(
-      100.0 * (
-        SELECT COUNT(*)
-        FROM games_search
-      ) / MAX(
-        (
-          SELECT COUNT(*)
-          FROM games
-        ),
-        1
-      )
-    ) >= 95 THEN 'PASS'
-    ELSE 'FAIL'
-  END AS status,
-  CASE
-    WHEN (
-      SELECT COUNT(*)
-      FROM games
-    ) = 0 THEN 0
-    ELSE ROUND(
-      100.0 * (
-        SELECT COUNT(*)
-        FROM games_search
-      ) / MAX(
-        (
-          SELECT COUNT(*)
-          FROM games
-        ),
-        1
-      )
-    )
-  END AS observed,
-  95 AS expected;
 -- Unresolved merge conflicts (build exits 2 when >0; track in validation report).
 SELECT 'merge.unresolved_conflicts' AS check_name,
   CASE

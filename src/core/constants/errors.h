@@ -67,25 +67,6 @@ namespace Constants {
         }
 
         // ============================================================================
-        // Metadata Provider Errors
-        // ============================================================================
-
-        namespace MetadataProvider {
-            inline const QString PROVIDER_NOT_AVAILABLE = QStringLiteral("Metadata provider is not available");
-            inline const QString PROVIDER_NOT_FOUND = QStringLiteral("Provider not found");
-            inline const QString AUTHENTICATION_FAILED = QStringLiteral("Authentication with provider failed");
-            inline const QString API_KEY_INVALID = QStringLiteral("Invalid API key for provider");
-            inline const QString CREDENTIALS_MISSING = QStringLiteral("Provider credentials are missing or incomplete");
-            inline const QString NETWORK_ERROR = QStringLiteral("Network error communicating with provider");
-            inline const QString REQUEST_TIMEOUT = QStringLiteral("Request to provider timed out");
-            inline const QString RATE_LIMIT_EXCEEDED = QStringLiteral("Rate limit exceeded for provider");
-            inline const QString INVALID_RESPONSE = QStringLiteral("Invalid response from provider");
-            inline const QString NO_RESULTS = QStringLiteral("No results found from provider");
-            inline const QString PARSE_ERROR = QStringLiteral("Failed to parse provider response");
-            inline const QString SERVICE_UNAVAILABLE = QStringLiteral("Provider service is temporarily unavailable");
-        }
-
-        // ============================================================================
         // Matching Errors
         // ============================================================================
 

@@ -18,12 +18,8 @@ namespace Constants {
         inline constexpr const char *HASHEOUS = "hasheous";
         inline constexpr const char *LIBRETRO_THUMBNAILS = "libretro";
 
-        // Provider IDs retained for system/API mapping only (no runtime provider yet).
+        /// Used by RaHasher / SystemResolver console-ID mappings only.
         inline constexpr const char *RETROACHIEVEMENTS = "retroachievements";
-        inline constexpr const char *THEGAMESDB = "thegamesdb";
-        inline constexpr const char *SCREENSCRAPER = "screenscraper";
-        inline constexpr const char *IGDB = "igdb";
-        inline constexpr const char *WIKIDATA = "wikidata";
 
         inline const QString DISPLAY_HASHEOUS = QStringLiteral("Hasheous");
         inline const QString DISPLAY_LIBRETRO_THUMBNAILS = QStringLiteral("Libretro Thumbnails");
@@ -89,6 +85,6 @@ namespace Constants {
             return providers;
         }
 
-    } // Providers
-} // Constants
+    } // namespace Providers
+} // namespace Constants
 } // namespace remustwo

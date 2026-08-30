@@ -62,38 +62,6 @@ namespace Constants {
         }
 
         // ============================================================================
-        // Multi-Signal Scoring (used by LocalDatabaseProvider match)
-        // ============================================================================
-
-        namespace MultiSignal {
-            /// Base score for a hash match (CRC32/MD5/SHA1)
-            inline constexpr int HASH_BASE = 100;
-
-            /// Bonus when filename matches exactly
-            inline constexpr int FILENAME_BONUS = 50;
-
-            /// Bonus when file size is within tolerance
-            inline constexpr int SIZE_BONUS = 30;
-
-            /// Bonus when serial number matches
-            inline constexpr int SERIAL_BONUS = 20;
-
-            /// Bonus when caller/file disc index matches catalog disc_number
-            inline constexpr int DISC_NUMBER_BONUS = 15;
-
-            /// Base score for a serial-only fallback match (no hash, no filename+size)
-            /// A disc serial is a reliable product identifier embedded in the disc header.
-            /// 130/200 = 65%, comfortably above the default 60% minimum threshold.
-            inline constexpr int SERIAL_BASE = 130;
-
-            /// Base score for a filename+size fallback match (no hash)
-            inline constexpr int FILENAME_SIZE_BASE = 80;
-
-            /// Maximum byte difference for size-match signal
-            inline constexpr qint64 SIZE_TOLERANCE = 1024;
-        }
-
-        // ============================================================================
         // Confidence Categories
         // ============================================================================
 

@@ -75,11 +75,6 @@ add_remustwo_test(test_matching_engine MatchingEngineTest
     LIBS Qt6::Test remustwo-core
 )
 
-add_remustwo_test(test_title_similarity TitleSimilarityTest
-    SOURCES test_title_similarity.cpp
-    LIBS Qt6::Test remustwo-core
-)
-
 add_remustwo_test(test_match_utils MatchUtilsTest
     SOURCES test_match_utils.cpp
     LIBS Qt6::Test remustwo-core
@@ -197,11 +192,6 @@ add_remustwo_test(test_wbfs_converter WbfsConverterTest
 
 add_remustwo_test(test_rvz_converter RvzConverterTest
     SOURCES test_rvz_converter.cpp
-    LIBS Qt6::Test remustwo-core
-)
-
-add_remustwo_test(test_pbp_exporter PbpExporterTest
-    SOURCES test_pbp_exporter.cpp
     LIBS Qt6::Test remustwo-core
 )
 

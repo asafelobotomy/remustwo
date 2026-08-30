@@ -206,7 +206,7 @@ Copy from remusone **with tests**, strip `QObject`/`Q_OBJECT` as you go, drop `Q
 
 - hasher, header_detector, ra_hasher, `chd_header` (no chdman)
 - scanner, system_detector — **document symlink skip policy**
-- dat_parser (Logiqx), matching_engine, title_similarity, match_utils — **unify confidence thresholds here**
+- dat_parser (Logiqx), matching_engine, match_utils — **unify confidence thresholds here**
 - disc_title_parser, disc_set_key, disc_set_utils
 - library SQLite (files/hashes/matches) — user library schema referencing catalog `game_id`
 - system defs: copy `systems*.cpp` for now; phase 2 makes SQL seeds canonical

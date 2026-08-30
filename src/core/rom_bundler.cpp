@@ -11,6 +11,7 @@
 #include "disc_set_utils.h"
 #include "hasher.h"
 #include "rvz_converter.h"
+#include "wbfs_converter.h"
 
 #include <QDateTime>
 #include <QDir>
@@ -49,8 +50,15 @@ namespace {
         }
         if ((file.systemId == Constants::Systems::ID_GAMECUBE || file.systemId == Constants::Systems::ID_WII)
             && (ext == Constants::Files::ISO || ext == Constants::Files::GCM)) {
-            RVZConverter converter;
-            return converter.isDolphinToolAvailable() ? Constants::Files::RVZ : ext;
+            RVZConverter rvz;
+            if (rvz.isDolphinToolAvailable())
+                return Constants::Files::RVZ;
+            if (file.systemId == Constants::Systems::ID_WII) {
+                WBFSConverter wbfs;
+                if (wbfs.isWitAvailable())
+                    return Constants::Files::WBFS;
+            }
+            return ext;
         }
         const bool discIso = ext == Constants::Files::ISO && Constants::Systems::discSystems().contains(file.systemId);
         const bool discBin = ext == Constants::Files::BIN && Constants::Systems::discSystems().contains(file.systemId)
@@ -80,6 +88,14 @@ namespace {
         if (payloadExtension == Constants::Files::RVZ) {
             RVZConverter converter;
             const ConversionResult converted = converter.convertIsoToRVZ(sourcePath);
+            if (converted.success)
+                return converted.outputPath;
+            payloadExtension = ext;
+            return sourcePath;
+        }
+        if (payloadExtension == Constants::Files::WBFS) {
+            WBFSConverter converter;
+            const ConversionResult converted = converter.convertIsoToWbfs(sourcePath);
             if (converted.success)
                 return converted.outputPath;
             payloadExtension = ext;

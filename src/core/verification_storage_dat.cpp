@@ -7,6 +7,17 @@
 
 namespace remustwo {
 
+namespace {
+
+bool catalogHasTable(QSqlDatabase &db, const QString &tableName) {
+    QSqlQuery q(db);
+    q.prepare(QStringLiteral("SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = ? LIMIT 1"));
+    q.addBindValue(tableName);
+    return q.exec() && q.next();
+}
+
+} // namespace
+
 int VerificationEngine::importDat(const QString &datFilePath, const QString &systemName) {
     DatParser parser;
     const DatParseResult parseResult = parser.parse(datFilePath);
@@ -211,26 +222,28 @@ QMap<QString, DatHeader> VerificationEngine::getImportedDats() {
 QMap<QString, DatHeader> VerificationEngine::getImportedPatchDats() {
     QMap<QString, DatHeader> dats;
 
-    // ── Compendium path ────────────────────────────────────────────────────
+    // ── Catalog patch tables (deferred migration 0014) ─────────────────────
     if (!m_compendiumConnectionName.isEmpty()) {
         QSqlDatabase cdb = QSqlDatabase::database(m_compendiumConnectionName);
-        QSqlQuery q(cdb);
-        q.exec(R"(
+        if (catalogHasTable(cdb, QStringLiteral("patch_catalog_sources"))) {
+            QSqlQuery q(cdb);
+            q.exec(R"(
             SELECT system_name, catalog_name, catalog_version, catalog_source, catalog_description
             FROM patch_catalog_sources
             ORDER BY system_name
         )");
-        while (q.next()) {
-            DatHeader header;
-            const QString sysName = q.value(0).toString();
-            header.name = q.value(1).toString();
-            header.version = q.value(2).toString();
-            header.category = q.value(3).toString();
-            header.description = q.value(4).toString();
-            dats.insert(sysName, header);
+            while (q.next()) {
+                DatHeader header;
+                const QString sysName = q.value(0).toString();
+                header.name = q.value(1).toString();
+                header.version = q.value(2).toString();
+                header.category = q.value(3).toString();
+                header.description = q.value(4).toString();
+                dats.insert(sysName, header);
+            }
+            if (!dats.isEmpty())
+                return dats;
         }
-        if (!dats.isEmpty())
-            return dats;
     }
 
     // ── Runtime-import fallback ────────────────────────────────────────────
@@ -303,14 +316,16 @@ bool VerificationEngine::hasDat(const QString &systemName) {
 }
 
 bool VerificationEngine::hasPatchDat(const QString &systemName) {
-    // ── Compendium path ────────────────────────────────────────────────────
+    // ── Catalog patch tables (deferred migration 0014) ─────────────────────
     if (!m_compendiumConnectionName.isEmpty()) {
         QSqlDatabase cdb = QSqlDatabase::database(m_compendiumConnectionName);
-        QSqlQuery q(cdb);
-        q.prepare("SELECT COUNT(*) FROM patch_catalog_sources WHERE system_name = ?");
-        q.addBindValue(systemName);
-        if (q.exec() && q.next() && q.value(0).toInt() > 0) {
-            return true;
+        if (catalogHasTable(cdb, QStringLiteral("patch_catalog_sources"))) {
+            QSqlQuery q(cdb);
+            q.prepare("SELECT COUNT(*) FROM patch_catalog_sources WHERE system_name = ?");
+            q.addBindValue(systemName);
+            if (q.exec() && q.next() && q.value(0).toInt() > 0) {
+                return true;
+            }
         }
     }
 

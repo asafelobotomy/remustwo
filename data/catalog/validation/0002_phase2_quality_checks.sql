@@ -1,5 +1,5 @@
--- Phase 2 compendium quality checks (informational thresholds)
--- Run with: sqlite3 -header -column <db_path> < data/compendium/validation/0002_phase2_quality_checks.sql
+-- Phase 2 catalog quality checks (informational thresholds)
+-- Run with: sqlite3 -header -column <db_path> < data/catalog/validation/0002_phase2_quality_checks.sql
 -- Wii U games should have hash signatures when sourced from Redump/Digital only.
 SELECT 'identity.wiiu_games_without_signatures' AS check_name,
   CASE
@@ -28,15 +28,6 @@ FROM systems s
   LEFT JOIN games g ON g.system_id = s.system_id
 GROUP BY s.system_id
 HAVING COUNT(g.game_id) = 0;
--- Patch catalog should be populated for translation/patch verification at runtime.
-SELECT 'catalog.patch_sources_nonempty' AS check_name,
-  CASE
-    WHEN COUNT(*) > 0 THEN 'PASS'
-    ELSE 'FAIL'
-  END AS status,
-  COUNT(*) AS observed,
-  1 AS expected
-FROM patch_catalog_sources;
 -- MAME listxml enrichment prerequisite (file checked at build time; row proxy via arcade dev gaps).
 -- Exclude mis-tagged non-arcade ingest rows (ZX Spectrum hacks, PSP PSN, multicarts) still on system_id=39.
 SELECT 'enrichment.arcade_missing_developer' AS check_name,

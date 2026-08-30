@@ -4,8 +4,11 @@
 
 #include "../core/constants/match_methods.h"
 #include "../core/database.h"
+#include "../core/extended_hashes.h"
 #include "../core/hasher.h"
 #include "../core/matching_engine.h"
+#include "../core/ra_hasher.h"
+#include "../core/system_detector.h"
 #include "../core/system_resolver.h"
 
 #include <QFileInfo>
@@ -21,8 +24,32 @@ namespace {
         hashes.crc32 = file.crc32;
         hashes.md5 = file.md5;
         hashes.sha1 = file.sha1;
-        hashes.success = file.hashCalculated && (!file.sha1.isEmpty() || !file.md5.isEmpty() || !file.crc32.isEmpty());
+        hashes.raMd5 = file.raMd5;
+        hashes.chdSha1 = file.chdSha1;
+        hashes.rvzSha1 = file.rvzSha1;
+        hashes.success = file.hashCalculated
+            && (!file.sha1.isEmpty() || !file.md5.isEmpty() || !file.crc32.isEmpty() || !file.chdSha1.isEmpty()
+                || !file.rvzSha1.isEmpty());
         return hashes;
+    }
+
+    bool needsExtendedHashes(const FileRecord &file, const HashResult &hashes) {
+        const QString ext = file.extension.toLower();
+        if ((ext == QStringLiteral(".chd") || ext == QStringLiteral(".rvz") || ext == QStringLiteral(".gcz"))
+            && hashes.chdSha1.isEmpty() && hashes.rvzSha1.isEmpty()) {
+            return true;
+        }
+        return file.systemId > 0 && hashes.raMd5.isEmpty() && RaHasher::hasRaMapping(file.systemId);
+    }
+
+    int resolveSystemId(const QString &path, const QString &extension, Database *library = nullptr) {
+        SystemDetector detector;
+        const QString detected = detector.detectSystem(extension, path);
+        if (detected.isEmpty())
+            return 0;
+        if (library)
+            return library->getSystemId(detected);
+        return Constants::Systems::getSystemIdByName(detected);
     }
 
     QString titleFromSourceEntryKey(const QString &sourceEntryKey) {
@@ -59,16 +86,18 @@ namespace {
             return Result<CatalogMatch>::ok(match);
         };
 
-        Result<CatalogMatch> result = lookup(QStringLiteral("sha1"), hashes.sha1);
-        if (!result) {
+        // Prefer disc-content digests (Redump CHD/RVZ SHA1) over container file hashes.
+        Result<CatalogMatch> result = lookup(QStringLiteral("sha1"), hashes.chdSha1);
+        if (!result)
+            result = lookup(QStringLiteral("sha1"), hashes.rvzSha1);
+        if (!result)
+            result = lookup(QStringLiteral("sha1"), hashes.sha1);
+        if (!result)
             result = lookup(QStringLiteral("md5"), hashes.md5);
-        }
-        if (!result) {
+        if (!result)
             result = lookup(QStringLiteral("crc32"), hashes.crc32);
-        }
-        if (!result) {
+        if (!result)
             return Result<CatalogMatch>::fail(QStringLiteral("No catalog match for file"));
-        }
         return result;
     }
 
@@ -101,6 +130,9 @@ namespace {
             record.crc32 = hashes.crc32;
             record.md5 = hashes.md5;
             record.sha1 = hashes.sha1;
+            record.raMd5 = hashes.raMd5;
+            record.chdSha1 = hashes.chdSha1;
+            record.rvzSha1 = hashes.rvzSha1;
             record.hashCalculated = true;
             record.baseTitle = match.title;
             record.catalogGameId = match.gameId;
@@ -119,7 +151,8 @@ namespace {
         if (fileId <= 0) {
             return Result<void>::fail(QStringLiteral("Failed to insert library file"));
         }
-        if (!library.updateFileHashes(fileId, hashes.crc32, hashes.md5, hashes.sha1)) {
+        if (!library.updateFileHashes(
+                fileId, hashes.crc32, hashes.md5, hashes.sha1, hashes.raMd5, hashes.chdSha1, hashes.rvzSha1)) {
             return Result<void>::fail(QStringLiteral("Failed to store library hashes"));
         }
         if (!library.updateFileCatalogMatch(fileId, systemId, match.title, match.gameId)) {
@@ -149,10 +182,15 @@ Result<CatalogMatch> matchFile(const QString &dbPath, const QString &filePath) {
 
 Result<CatalogMatch> matchFile(const QString &dbPath, const QString &filePath, const QString &libraryPath) {
     Hasher hasher;
-    const HashResult hashes = hasher.calculateHashes(filePath);
+    HashResult hashes = hasher.calculateHashes(filePath);
     if (!hashes.success) {
         return Result<CatalogMatch>::fail(hashes.error);
     }
+
+    const QFileInfo info(filePath);
+    const QString extension = QStringLiteral(".") + info.suffix().toLower();
+    const int systemId = resolveSystemId(filePath, extension);
+    populateExtendedHashes(hashes, { filePath, systemId, extension });
 
     auto dbResult = open(dbPath, QStringLiteral("catalog_match"));
     if (!dbResult) {
@@ -210,11 +248,14 @@ Result<int> matchLibrary(const QString &dbPath, const QString &libraryPath) {
         }
 
         HashResult hashes = hashesFromRecord(file);
-        if (!hashes.success) {
+        if (!hashes.success || needsExtendedHashes(file, hashes)) {
             hashes = hasher.calculateHashes(file.currentPath);
-            if (!hashes.success) {
+            if (!hashes.success)
                 continue;
-            }
+            int systemId = file.systemId;
+            if (systemId <= 0)
+                systemId = resolveSystemId(file.currentPath, file.extension, &library);
+            populateExtendedHashes(hashes, { file.currentPath, systemId, file.extension });
         }
 
         auto result = lookupHashes(catalogDb, hashes);

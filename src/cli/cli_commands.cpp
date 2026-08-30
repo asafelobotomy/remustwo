@@ -5,6 +5,7 @@
 #include "../core/hasher.h"
 #include "../core/library_scan.h"
 #include "../core/verification_engine.h"
+#include "../core/constants/api.h"
 #include "../metadata/hasheous_provider.h"
 #include "../metadata/library_enrich.h"
 #include "../metadata/library_organize.h"
@@ -387,7 +388,7 @@ int run(int argc, char *argv[]) {
     QCoreApplication app(argc, argv);
     QCoreApplication::setApplicationName(QStringLiteral("remustwo"));
     QCoreApplication::setOrganizationName(QStringLiteral("remustwo"));
-    QCoreApplication::setApplicationVersion(QStringLiteral("0.5.0"));
+    QCoreApplication::setApplicationVersion(QString::fromLatin1(remustwo::Constants::APP_VERSION));
 
     QCommandLineParser parser;
     parser.setApplicationDescription(QStringLiteral("Offline ROM catalog and library manager."));

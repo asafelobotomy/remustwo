@@ -1,4 +1,7 @@
-# Remusone evaluation (cleaned)
+# Remusone evaluation (historical)
+
+> **Status:** planning archaeology from the remusone → remustwo port. Not the current product truth.
+> Authoritative surface: `README.md`, CLI `--help`, and the binary under test.
 
 Source: [github.com/asafelobotomy/remus](https://github.com/asafelobotomy/remus) at `0aae9fe` (2026-07-06), clone `/tmp/remus-eval`, CI run [28793418463](https://github.com/asafelobotomy/remus/actions/runs/28793418463). Reviewed 17 Aug 2026.
 
@@ -122,8 +125,8 @@ Also port `chd_header.cpp` (v5 content SHA1 without spawning chdman). Do **not**
 This is the expensive part remusone already paid for.
 
 - Copy `data/compendium` migrations, seeds, validation SQL
-- Copy `CompendiumCompilerService`, DAT extractor, identity linker, merge resolver, fact inserter, disc-set inserter
-- Copy `CompendiumProvider` for offline match
+- Copy catalog compiler, DAT extractor, identity linker, merge resolver, fact inserter, disc-set inserter
+- Match via catalog hash signatures (CompendiumProvider was later removed as unused)
 - Fix `cover_url` schema drift here, while the merge test is in the same commit as the migration
 - Library API, not scripts:
   - `catalog.init()` — schema + seeds (cannot match)

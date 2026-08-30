@@ -222,8 +222,8 @@ void ConstantsTest::testTemplateVariables() {
 void ConstantsTest::testSettingsDefaults() {
     QCOMPARE(Settings::Defaults::NAMING_TEMPLATE, Templates::DEFAULT_SIMPLE);
     QCOMPARE(QString(Settings::Organize::NAMING_TEMPLATE), QStringLiteral("organize/naming_template"));
-    QCOMPARE(QString(Settings::Providers::SCREENSCRAPER_USERNAME), QStringLiteral("screenscraper/username"));
-    QCOMPARE(Settings::Defaults::PROVIDER_PRIORITY, QStringLiteral("ScreenScraper (Primary)"));
+    QCOMPARE(QString(Settings::Providers::HASHEOUS_CLIENT_API_KEY), QStringLiteral("hasheous/client_api_key"));
+    QCOMPARE(Settings::Defaults::PROVIDER_PRIORITY, QStringLiteral("Hasheous"));
 }
 
 void ConstantsTest::testFileTypeHelpers() {

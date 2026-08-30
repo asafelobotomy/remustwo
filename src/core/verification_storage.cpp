@@ -8,6 +8,17 @@
 
 namespace remustwo {
 
+namespace {
+
+bool catalogHasTable(QSqlDatabase &db, const QString &tableName) {
+    QSqlQuery q(db);
+    q.prepare(QStringLiteral("SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = ? LIMIT 1"));
+    q.addBindValue(tableName);
+    return q.exec() && q.next();
+}
+
+} // namespace
+
 void VerificationEngine::loadDatCache(const QString &systemName) {
     if (m_datCache.contains(systemName)) {
         return; // Already loaded
@@ -125,49 +136,51 @@ void VerificationEngine::loadPatchDatCache(const QString &systemName) {
 
     QMap<QString, DatRomEntry> entries;
 
-    // ── Compendium path ────────────────────────────────────────────────────
+    // ── Catalog patch tables (deferred migration 0014) ─────────────────────
     if (!m_compendiumConnectionName.isEmpty()) {
         QSqlDatabase cdb = QSqlDatabase::database(m_compendiumConnectionName);
-        QSqlQuery q(cdb);
-        q.prepare(R"(
+        if (catalogHasTable(cdb, QStringLiteral("patch_entries"))) {
+            QSqlQuery q(cdb);
+            q.prepare(R"(
             SELECT pe.game_name, pe.rom_name, pe.rom_size, pe.crc32, pe.md5, pe.sha1, pe.sha256,
                    pe.description, pe.status, pe.base_title, pe.patch_name, pe.file_type
             FROM patch_entries pe
             JOIN patch_catalog_sources pcs ON pe.source_id = pcs.source_id
             WHERE pcs.system_name = ?
         )");
-        q.addBindValue(systemName);
+            q.addBindValue(systemName);
 
-        if (q.exec()) {
-            while (q.next()) {
-                DatRomEntry entry;
-                entry.gameName = q.value(0).toString();
-                entry.romName = q.value(1).toString();
-                entry.size = q.value(2).toLongLong();
-                entry.crc32 = q.value(3).toString();
-                entry.md5 = q.value(4).toString();
-                entry.sha1 = q.value(5).toString();
-                entry.sha256 = q.value(6).toString();
-                entry.description = q.value(7).toString();
-                entry.status = q.value(8).toString();
-                entry.baseTitle = q.value(9).toString();
-                entry.patchName = q.value(10).toString();
-                entry.fileType = q.value(11).toString();
+            if (q.exec()) {
+                while (q.next()) {
+                    DatRomEntry entry;
+                    entry.gameName = q.value(0).toString();
+                    entry.romName = q.value(1).toString();
+                    entry.size = q.value(2).toLongLong();
+                    entry.crc32 = q.value(3).toString();
+                    entry.md5 = q.value(4).toString();
+                    entry.sha1 = q.value(5).toString();
+                    entry.sha256 = q.value(6).toString();
+                    entry.description = q.value(7).toString();
+                    entry.status = q.value(8).toString();
+                    entry.baseTitle = q.value(9).toString();
+                    entry.patchName = q.value(10).toString();
+                    entry.fileType = q.value(11).toString();
 
-                if (!entry.sha256.isEmpty())
-                    entries.insert(entry.sha256.toLower(), entry);
-                if (!entry.sha1.isEmpty())
-                    entries.insert(entry.sha1.toLower(), entry);
-                if (!entry.md5.isEmpty())
-                    entries.insert(entry.md5.toLower(), entry);
-                if (!entry.crc32.isEmpty())
-                    entries.insert(entry.crc32.toLower(), entry);
+                    if (!entry.sha256.isEmpty())
+                        entries.insert(entry.sha256.toLower(), entry);
+                    if (!entry.sha1.isEmpty())
+                        entries.insert(entry.sha1.toLower(), entry);
+                    if (!entry.md5.isEmpty())
+                        entries.insert(entry.md5.toLower(), entry);
+                    if (!entry.crc32.isEmpty())
+                        entries.insert(entry.crc32.toLower(), entry);
+                }
+                m_patchDatCache.insert(systemName, entries);
+                qDebug() << "Loaded" << entries.size() << "catalog patch entries for" << systemName;
+                return;
             }
-            m_patchDatCache.insert(systemName, entries);
-            qDebug() << "Loaded" << entries.size() << "compendium patch entries for" << systemName;
-            return;
+            qWarning() << "VerificationEngine: catalog loadPatchDatCache query failed:" << q.lastError().text();
         }
-        qWarning() << "VerificationEngine: compendium loadPatchDatCache query failed:" << q.lastError().text();
     }
 
     // ── Runtime-import fallback ────────────────────────────────────────────

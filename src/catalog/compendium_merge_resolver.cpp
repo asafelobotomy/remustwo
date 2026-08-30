@@ -432,7 +432,7 @@ namespace Compendium {
 
         // ── Materialize canonical_resolution → games.* ───────────────────────────
         // Propagates the winning fact value for each field back to the denormalised
-        // games columns so that CompendiumProvider queries read resolved data.
+        // games columns so catalog and enrich paths read resolved data.
         // field_name in game_facts → column name in games (most are identical).
         static constexpr struct {
             const char *factName;

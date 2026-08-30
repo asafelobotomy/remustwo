@@ -43,7 +43,6 @@ add_library(remustwo-core STATIC
     system_resolver.cpp
     system_resolver_dat.cpp
     system_resolver_provider_mappings.cpp
-    title_similarity.cpp
     archive_extractor.cpp
     archive_creator.cpp
     library_paths.cpp
@@ -70,7 +69,6 @@ add_library(remustwo-core STATIC
     cso_converter.cpp
     wbfs_converter.cpp
     rvz_converter.cpp
-    pbp_exporter.cpp
     external_tool_runner.cpp
     rom_bundler.cpp
 )

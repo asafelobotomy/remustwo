@@ -54,7 +54,7 @@ Real use: download No-Intro/Redump DATs for your systems, then `catalog ingest` 
 
 Build with libarchive for archive extraction and zip bundles: `-DREMUSTWO_ENABLE_LIBARCHIVE=ON` (requires `libarchive-dev`). GUI: `-DREMUSTWO_BUILD_GUI=ON` (requires `qt6-declarative-dev`).
 
-Optional converters (skip if missing): `chdman` (`mame-tools`; Debian often puts it in `/usr/games`), `dolphin-tool` (Dolphin .deb, Flatpak, or Snap), `maxcso` for PSP ISO→CSO, plus `wit` and `PSXPackager` when present. remustwo searches `REMUSTWO_TOOL_PATH`, `~/.local/bin`, PATH, `/usr/games`, Homebrew/Nix/Guix, Snap aliases, and Flatpak app binaries (no manual wrapper). A local [remustwo-maxcso](https://github.com/asafelobotomy/remustwo-maxcso) tree at `../remustwo-maxcso` is also picked up; `make PREFIX="$HOME/.local" install` is still the durable install.
+Optional converters (skip if missing): `chdman` (`mame-tools`; Debian often puts it in `/usr/games`), `dolphin-tool` (Dolphin .deb, Flatpak, or Snap), `maxcso` for PSP ISO→CSO, and `wit` for Wii WBFS. remustwo searches `REMUSTWO_TOOL_PATH`, `~/.local/bin`, PATH, `/usr/games`, Homebrew/Nix/Guix, Snap aliases, and Flatpak app binaries (no manual wrapper). A local [remustwo-maxcso](https://github.com/asafelobotomy/remustwo-maxcso) tree at `../remustwo-maxcso` is also picked up; `make PREFIX="$HOME/.local" install` is still the durable install.
 
 ## Status
 
