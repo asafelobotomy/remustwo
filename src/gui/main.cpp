@@ -1,6 +1,7 @@
 #include "library_controller.h"
 
 #include "../core/constants/api.h"
+#include "../core/constants/constants.h"
 
 #include <QGuiApplication>
 #include <QQmlApplicationEngine>
@@ -9,8 +10,8 @@
 
 int main(int argc, char *argv[]) {
     QGuiApplication app(argc, argv);
-    QCoreApplication::setApplicationName(QStringLiteral("remustwo-gui"));
-    QCoreApplication::setOrganizationName(QStringLiteral("remustwo"));
+    QCoreApplication::setApplicationName(QString::fromLatin1(remustwo::Constants::SETTINGS_APPLICATION) + QStringLiteral("-gui"));
+    QCoreApplication::setOrganizationName(QString::fromLatin1(remustwo::Constants::SETTINGS_ORGANIZATION));
     QCoreApplication::setApplicationVersion(QString::fromLatin1(remustwo::Constants::APP_VERSION));
 
     LibraryController model;

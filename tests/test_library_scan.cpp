@@ -2,6 +2,7 @@
 #include <QTemporaryDir>
 #include <QFile>
 #include <QDir>
+#include <QProcess>
 
 #include "../src/catalog/catalog.h"
 #include "../src/catalog/catalog_ingest.h"
@@ -110,6 +111,40 @@ private slots:
         QCOMPARE(result->failed, 0);
         QVERIFY(result->archiveEntries.contains(QStringLiteral(".remus.md")));
     }
+
+#ifdef REMUSTWO_HAS_LIBARCHIVE
+    void scanHashesRomInsideZip() {
+        QTemporaryDir dir;
+        QVERIFY(dir.isValid());
+        const QString romDir = dir.filePath(QStringLiteral("roms"));
+        QVERIFY(QDir().mkpath(romDir));
+        const QString romSource = test::syntheticFixtureRom();
+        const QString zipPath = romDir + QStringLiteral("/pack.zip");
+
+        QProcess zip;
+        zip.start(QStringLiteral("python3"),
+            { QStringLiteral("-c"),
+                QStringLiteral(
+                    "import zipfile,sys; z=zipfile.ZipFile(sys.argv[1],'w'); z.write(sys.argv[2],'fixture.bin'); z.close()"),
+                zipPath, romSource });
+        QVERIFY(zip.waitForFinished(30000));
+        QCOMPARE(zip.exitCode(), 0);
+
+        const QString catalogPath = dir.filePath(QStringLiteral("catalog.db"));
+        const QString libraryPath = dir.filePath(QStringLiteral("library.db"));
+        QVERIFY(catalog::init(catalogPath));
+        QVERIFY(catalog::ingestDat(catalogPath, test::syntheticFixtureDat()));
+
+        auto scanned = scanLibrary(romDir, libraryPath);
+        QVERIFY2(scanned, qPrintable(scanned.error()));
+        QVERIFY(scanned->scanned >= 1);
+        QVERIFY(scanned->hashed >= 1);
+
+        auto matched = catalog::matchLibrary(catalogPath, libraryPath);
+        QVERIFY(matched);
+        QCOMPARE(*matched, 1);
+    }
+#endif
 };
 
 QTEST_MAIN(LibraryScanTest)

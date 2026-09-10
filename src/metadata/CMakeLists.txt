@@ -1,7 +1,9 @@
 add_library(remustwo-metadata STATIC
     http_client.cpp
     hasheous_provider.cpp
+    hasheous_igdb.cpp
     artwork_cache.cpp
+    catalog_fetch.cpp
     library_enrich.cpp
     library_organize.cpp
 )

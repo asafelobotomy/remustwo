@@ -1,7 +1,8 @@
 #include "hasher.h"
-#include <QFile>
 #include <QCryptographicHash>
 #include <QDebug>
+#include <QFile>
+#include <QFileInfo>
 #include <zlib.h>
 
 namespace remustwo {
@@ -96,6 +97,12 @@ int Hasher::detectHeaderSize(const QString &filePath, const QString &extension) 
     }
 
     return 0; // No header
+}
+
+HashResult Hasher::calculateContentHashes(const QString &filePath) {
+    const QString extension = QStringLiteral(".") + QFileInfo(filePath).suffix().toLower();
+    const int headerSize = detectHeaderSize(filePath, extension);
+    return calculateHashes(filePath, headerSize > 0, headerSize);
 }
 
 } // namespace remustwo

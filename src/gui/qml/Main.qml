@@ -18,7 +18,7 @@ ApplicationWindow {
     FolderDialog {
         id: destDialog
         title: "Organize destination"
-        onAccepted: libraryModel.organize(selectedFolder, dryRunBox.checked, bundleBox.checked, artBox.checked, "auto")
+        onAccepted: libraryModel.organize(selectedFolder, dryRunBox.checked, bundleBox.checked, artBox.checked, onlineBox.checked, "auto")
     }
 
     ColumnLayout {
@@ -58,6 +58,11 @@ ApplicationWindow {
                 onClicked: libraryModel.matchAll()
             }
             Button {
+                text: "Verify"
+                enabled: !libraryModel.busy
+                onClicked: libraryModel.verify()
+            }
+            Button {
                 text: "Enrich"
                 enabled: !libraryModel.busy
                 onClicked: libraryModel.enrich(onlineBox.checked, dryRunBox.checked)
@@ -91,7 +96,7 @@ ApplicationWindow {
             }
             CheckBox {
                 id: onlineBox
-                text: "Online enrich"
+                text: "Online"
             }
         }
 

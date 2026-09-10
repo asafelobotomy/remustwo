@@ -1,5 +1,5 @@
 -- Disc set schema and integrity checks (migration 0007).
--- Run with: validate-compendium-db.sh <db> data/compendium/validation/0004_disc_set_checks.sql
+-- Run with: sqlite3 -header -column <db_path> < data/catalog/validation/0004_disc_set_checks.sql
 -- Ingest coverage thresholds live in 0005_disc_set_ingest_checks.sql.
 SELECT 'schema.game_disc_sets_table' AS check_name,
   CASE

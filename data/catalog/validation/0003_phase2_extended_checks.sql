@@ -1,5 +1,5 @@
 -- Phase 2 extended compendium quality checks (informational thresholds)
--- Run with: sqlite3 -header -column <db_path> < data/compendium/validation/0003_phase2_extended_checks.sql
+-- Run with: sqlite3 -header -column <db_path> < data/catalog/validation/0003_phase2_extended_checks.sql
 -- SHA256 signature baseline (modern No-Intro / digital sets).
 SELECT 'identity.sha256_signature_count' AS check_name,
   CASE

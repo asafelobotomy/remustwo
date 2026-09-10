@@ -76,7 +76,6 @@ target_include_directories(remustwo-core PUBLIC
     ${CMAKE_SOURCE_DIR}/src
     ${CMAKE_CURRENT_SOURCE_DIR}
 )
-find_package(ZLIB REQUIRED)
 target_link_libraries(remustwo-core PUBLIC
     Qt6::Core
     Qt6::Sql

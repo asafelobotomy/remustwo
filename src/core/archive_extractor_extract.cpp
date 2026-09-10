@@ -179,12 +179,8 @@ ExtractionResult ArchiveExtractor::extractToDir(
     result.archivePath = archivePath;
     result.outputDir = outputDir;
 
-    const ArchiveInfo info = getArchiveInfo(archivePath);
-    if (!info.unsafeEntries.isEmpty()) {
-        result.error = QStringLiteral("Archive contains unsafe path entries: %1").arg(info.unsafeEntries.first());
-        return result;
-    }
-
+    // Single-pass extract: validate member paths while streaming (avoids a prior
+    // getArchiveInfo walk that re-reads the whole archive).
     using ArchivePtr = std::unique_ptr<archive, decltype(&archive_read_free)>;
     ArchivePtr a(archive_read_new(), archive_read_free);
     archive_read_support_filter_all(a.get());
@@ -211,6 +207,17 @@ ExtractionResult ArchiveExtractor::extractToDir(
 
         const QString rawPath = QString::fromUtf8(archive_entry_pathname(entry));
         const QString normalized = normalizeArchiveMemberPath(rawPath);
+        if (normalized.isEmpty()) {
+            // Reject the whole archive atomically — undo any files already written.
+            for (const QString &written : result.extractedFiles)
+                QFile::remove(written);
+            result.extractedFiles.clear();
+            result.filesExtracted = 0;
+            result.bytesExtracted = 0;
+            result.failedFiles = 0;
+            result.error = QStringLiteral("Archive contains unsafe path entries: %1").arg(rawPath);
+            return result;
+        }
 
         // When extracting a single named member, skip non-matching entries
         if (!singleMember.isEmpty() && normalized != singleMember) {
@@ -247,27 +254,28 @@ ExtractionResult ArchiveExtractor::extractToDir(
             continue;
         }
         outFile.close();
-
-        result.extractedFiles.append(destPath);
-        result.bytesExtracted += outFile.size();
         result.filesExtracted++;
+        result.extractedFiles.append(destPath);
+        result.bytesExtracted += QFileInfo(destPath).size();
+        emit extractionProgress(
+            singleMember.isEmpty() ? 0 : 100, normalized);
 
-        emit extractionProgress(0, normalized);
+        if (!singleMember.isEmpty()) {
+            result.success = true;
+            return result;
+        }
     }
 
-    if (readStatus != ARCHIVE_EOF) {
-        result.failedFiles++;
-        result.error = QStringLiteral("Archive read failed: %1").arg(QString::fromUtf8(archive_error_string(a.get())));
+    if (readStatus != ARCHIVE_EOF && result.filesExtracted == 0 && result.error.isEmpty()) {
+        result.error = QString::fromUtf8(archive_error_string(a.get()));
+        if (result.error.isEmpty())
+            result.error = QStringLiteral("Failed to read archive");
         return result;
     }
 
-    result.success = (result.filesExtracted > 0);
-    if (result.failedFiles > 0 && result.success) {
-        result.error = summarizeFailures(QStringLiteral("Extraction completed with skipped files"), result.failedFiles);
-    } else if (!result.success && result.error.isEmpty()) {
-        result.error = summarizeFailures(
-            QStringLiteral("Extraction completed without any successful files"), result.failedFiles);
-    }
+    result.success = result.failedFiles == 0 || result.filesExtracted > 0;
+    if (!result.success && result.error.isEmpty())
+        result.error = summarizeFailures(QStringLiteral("Extraction failed"), result.failedFiles);
     return result;
 }
 

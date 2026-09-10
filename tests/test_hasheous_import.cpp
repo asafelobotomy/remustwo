@@ -36,7 +36,16 @@ void HasheousImportTest::importJsonUpdatesCoverUrl() {
     QVERIFY(dbResult);
     QSqlDatabase database = *dbResult;
     QSqlQuery query(database);
-    QVERIFY(query.exec(QStringLiteral("SELECT cover_url FROM games LIMIT 1")));
+    QVERIFY(query.exec(QStringLiteral(
+        "SELECT cover_url, description, developer, publisher, release_date FROM games LIMIT 1")));
+    QVERIFY(query.next());
+    QCOMPARE(query.value(0).toString(), QStringLiteral("https://example.com/fixture-cover.jpg"));
+    QCOMPARE(query.value(1).toString(), QStringLiteral("Synthetic fixture enrichment entry"));
+    QCOMPARE(query.value(2).toString(), QStringLiteral("Fixture Dev"));
+    QCOMPARE(query.value(3).toString(), QStringLiteral("Fixture Pub"));
+    QCOMPARE(query.value(4).toString(), QStringLiteral("1990-01-01"));
+    QVERIFY(query.exec(QStringLiteral(
+        "SELECT url FROM game_assets WHERE asset_type = 'boxart' LIMIT 1")));
     QVERIFY(query.next());
     QCOMPARE(query.value(0).toString(), QStringLiteral("https://example.com/fixture-cover.jpg"));
     database.close();

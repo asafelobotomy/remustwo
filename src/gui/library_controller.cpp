@@ -6,6 +6,7 @@
 #include "../core/library_paths.h"
 #include "../core/library_scan.h"
 #include "../core/rom_bundler.h"
+#include "../core/verification_engine.h"
 #include "../metadata/artwork_cache.h"
 #include "../metadata/library_enrich.h"
 #include "../metadata/library_organize.h"
@@ -57,11 +58,28 @@ public slots:
         emit finished(QStringLiteral("Enrich: %1 matched, %2 updated").arg(result->matchedGames).arg(result->updated));
     }
 
-    void organize(const QString &dest, bool dryRun, bool bundle, bool includeArt, const QString &convert) {
+    void verify() {
+        remustwo::Database db;
+        if (!db.initialize(m_libraryPath)) {
+            emit finished(QStringLiteral("verify: no library database yet (ok)"));
+            return;
+        }
+        remustwo::VerificationEngine engine(&db);
+        engine.setCompendiumDb(m_catalogPath);
+        engine.verifyLibrary();
+        const remustwo::VerificationSummary summary = engine.getLastSummary();
+        emit finished(QStringLiteral("verify: %1 file(s), %2 verified, %3 mismatched")
+                          .arg(summary.totalFiles)
+                          .arg(summary.verified)
+                          .arg(summary.mismatched));
+    }
+
+    void organize(const QString &dest, bool dryRun, bool bundle, bool includeArt, bool online, const QString &convert) {
         remustwo::OrganizeLibraryOptions options;
         options.dryRun = dryRun;
         options.bundle = bundle;
         options.includeArt = includeArt;
+        options.online = online;
         options.convert = convert.compare(QStringLiteral("never"), Qt::CaseInsensitive) == 0
             ? remustwo::BundleConvertMode::Never
             : remustwo::BundleConvertMode::Auto;
@@ -95,6 +113,7 @@ LibraryController::LibraryController(QObject *parent)
     connect(this, &LibraryController::scanRequested, m_worker, &LibraryWorker::scan);
     connect(this, &LibraryController::matchAllRequested, m_worker, &LibraryWorker::matchAll);
     connect(this, &LibraryController::enrichRequested, m_worker, &LibraryWorker::enrich);
+    connect(this, &LibraryController::verifyRequested, m_worker, &LibraryWorker::verify);
     connect(this, &LibraryController::organizeRequested, m_worker, &LibraryWorker::organize);
     connect(m_worker, &LibraryWorker::finished, this, &LibraryController::onJobFinished);
     connect(m_worker, &LibraryWorker::failed, this, &LibraryController::onJobFailed);
@@ -186,11 +205,18 @@ void LibraryController::enrich(bool online, bool dryRun) {
     emit enrichRequested(online, dryRun);
 }
 
-void LibraryController::organize(const QUrl &dest, bool dryRun, bool bundle, bool includeArt, const QString &convert) {
+void LibraryController::verify() {
+    if (!beginJob(QStringLiteral("Verifying…")))
+        return;
+    emit verifyRequested();
+}
+
+void LibraryController::organize(
+    const QUrl &dest, bool dryRun, bool bundle, bool includeArt, bool online, const QString &convert) {
     const QString path = toLocalPath(dest);
     if (path.isEmpty() || !beginJob(QStringLiteral("Organizing…")))
         return;
-    emit organizeRequested(path, dryRun, bundle, includeArt, convert);
+    emit organizeRequested(path, dryRun, bundle, includeArt, online, convert);
 }
 
 void LibraryController::onJobFinished(const QString &message) {

@@ -36,6 +36,19 @@ bool createSchema(QSqlDatabase &db) {
                               "achievement_count INTEGER, "
                               "canonical_confidence REAL NOT NULL DEFAULT 0)"))
         && execSql(db,
+            QStringLiteral("CREATE TABLE source_snapshots ("
+                           "snapshot_id TEXT PRIMARY KEY, "
+                           "source_id TEXT NOT NULL, "
+                           "snapshot_label TEXT NOT NULL, "
+                           "fetched_at TEXT)"))
+        && execSql(db,
+            QStringLiteral("CREATE TABLE game_names ("
+                           "game_name_id INTEGER PRIMARY KEY AUTOINCREMENT, "
+                           "game_id TEXT NOT NULL, "
+                           "name_text TEXT NOT NULL, "
+                           "alias_type TEXT NOT NULL DEFAULT 'alias', "
+                           "locale TEXT NOT NULL DEFAULT '')"))
+        && execSql(db,
             QStringLiteral("CREATE TABLE game_facts ("
                            "fact_id INTEGER PRIMARY KEY AUTOINCREMENT, "
                            "game_id TEXT NOT NULL, "
@@ -100,6 +113,10 @@ private slots:
     void resolve_releaseYearDerivedFromReleaseDateWhenNoYearFact();
     void resolve_playersMax_rejectsNonPureNumeric();
     void coverUrlMaterializesOntoGames();
+    void resolve_releaseDatePrefersNewerSnapshot();
+    void resolve_titleUsesNormalizedNameSimilarity();
+    void resolve_regionPrefersExplicitCode();
+    void resolve_ratingNormalizesPercentScale();
 };
 
 void CompendiumMergeResolverTest::resolve_replacesConflictRowsOnRepeatedRuns() {
@@ -326,6 +343,141 @@ void CompendiumMergeResolverTest::coverUrlMaterializesOntoGames() {
         q.exec(QStringLiteral("SELECT cover_url FROM games WHERE game_id = 'game-cover'"));
         QVERIFY(q.next());
         QCOMPARE(q.value(0).toString(), QStringLiteral("https://example.com/box.png"));
+        db.close();
+    }
+    QSqlDatabase::removeDatabase(connectionName);
+}
+
+void CompendiumMergeResolverTest::resolve_releaseDatePrefersNewerSnapshot() {
+    const QString connectionName = QStringLiteral("merge_newer_snapshot");
+    {
+        QSqlDatabase db = QSqlDatabase::addDatabase(QStringLiteral("QSQLITE"), connectionName);
+        db.setDatabaseName(QStringLiteral(":memory:"));
+        QVERIFY(db.open());
+        QVERIFY(createSchema(db));
+        QVERIFY(execSql(db, QStringLiteral("INSERT INTO games (game_id, canonical_title) VALUES ('game-date', 'Date Game')")));
+        QVERIFY(execSql(db,
+            QStringLiteral("INSERT INTO source_snapshots (snapshot_id, source_id, snapshot_label, fetched_at) "
+                           "VALUES ('old', 'dat', 'old', '2020-01-01'), ('new', 'dat', 'new', '2024-06-01')")));
+        // Same full date length + same priority; newer snapshot must win.
+        QVERIFY(execSql(db,
+            QStringLiteral("INSERT INTO game_facts "
+                           "(game_id, field_name, field_value, source_priority, confidence, snapshot_id) "
+                           "VALUES ('game-date', 'release_date', '2001-06-15', 100, 1.0, 'old')")));
+        QVERIFY(execSql(db,
+            QStringLiteral("INSERT INTO game_facts "
+                           "(game_id, field_name, field_value, source_priority, confidence, snapshot_id) "
+                           "VALUES ('game-date', 'release_date', '2001-06-15', 100, 1.0, 'new')")));
+
+        MergeResolver resolver;
+        CompilerStats stats;
+        QString error;
+        QVERIFY2(resolver.resolve(db, stats, error), qPrintable(error));
+
+        QSqlQuery q(db);
+        q.exec(QStringLiteral(
+            "SELECT gf.snapshot_id FROM canonical_resolution cr "
+            "JOIN game_facts gf ON gf.fact_id = cr.selected_fact_id "
+            "WHERE cr.game_id = 'game-date' AND cr.field_name = 'release_date'"));
+        QVERIFY(q.next());
+        QCOMPARE(q.value(0).toString(), QStringLiteral("new"));
+        db.close();
+    }
+    QSqlDatabase::removeDatabase(connectionName);
+}
+
+void CompendiumMergeResolverTest::resolve_titleUsesNormalizedNameSimilarity() {
+    const QString connectionName = QStringLiteral("merge_title_similarity");
+    {
+        QSqlDatabase db = QSqlDatabase::addDatabase(QStringLiteral("QSQLITE"), connectionName);
+        db.setDatabaseName(QStringLiteral(":memory:"));
+        QVERIFY(db.open());
+        QVERIFY(createSchema(db));
+        QVERIFY(execSql(db,
+            QStringLiteral("INSERT INTO games (game_id, canonical_title, canonical_confidence) "
+                           "VALUES ('game-sim', 'Placeholder', 0)")));
+        QVERIFY(execSql(db,
+            QStringLiteral("INSERT INTO game_names (game_id, name_text) VALUES ('game-sim', 'Metal Gear Solid')")));
+        // Low confidence, no source_item_id → similarity pass should prefer alias-near title
+        // over an unrelated longer title that would otherwise win on priority alone.
+        QVERIFY(execSql(db,
+            QStringLiteral("INSERT INTO game_facts "
+                           "(game_id, field_name, field_value, source_priority, confidence) "
+                           "VALUES ('game-sim', 'title', 'Completely Unrelated Long Title Name', 100, 0.5)")));
+        QVERIFY(execSql(db,
+            QStringLiteral("INSERT INTO game_facts "
+                           "(game_id, field_name, field_value, source_priority, confidence) "
+                           "VALUES ('game-sim', 'title', 'Metal Gear Solid (USA)', 50, 0.5)")));
+
+        MergeResolver resolver;
+        CompilerStats stats;
+        QString error;
+        QVERIFY2(resolver.resolve(db, stats, error), qPrintable(error));
+
+        QSqlQuery q(db);
+        q.exec(QStringLiteral(
+            "SELECT gf.field_value, cr.resolved_by_rule FROM canonical_resolution cr "
+            "JOIN game_facts gf ON gf.fact_id = cr.selected_fact_id "
+            "WHERE cr.game_id = 'game-sim' AND cr.field_name = 'title'"));
+        QVERIFY(q.next());
+        QCOMPARE(q.value(0).toString(), QStringLiteral("Metal Gear Solid (USA)"));
+        QCOMPARE(q.value(1).toString(), QStringLiteral("normalized_name_similarity"));
+        db.close();
+    }
+    QSqlDatabase::removeDatabase(connectionName);
+}
+
+void CompendiumMergeResolverTest::resolve_regionPrefersExplicitCode() {
+    const QString connectionName = QStringLiteral("merge_region_explicit");
+    {
+        QSqlDatabase db = QSqlDatabase::addDatabase(QStringLiteral("QSQLITE"), connectionName);
+        db.setDatabaseName(QStringLiteral(":memory:"));
+        QVERIFY(db.open());
+        QVERIFY(createSchema(db));
+        QVERIFY(execSql(db, QStringLiteral("INSERT INTO games (game_id, canonical_title) VALUES ('game-reg', 'Region Game')")));
+        QVERIFY(execSql(db,
+            QStringLiteral("INSERT INTO game_facts (game_id, field_name, field_value, source_priority, confidence) "
+                           "VALUES ('game-reg', 'region', 'from title (Europe)', 100, 1.0)")));
+        QVERIFY(execSql(db,
+            QStringLiteral("INSERT INTO game_facts (game_id, field_name, field_value, source_priority, confidence) "
+                           "VALUES ('game-reg', 'region', 'EUR', 50, 1.0)")));
+
+        MergeResolver resolver;
+        CompilerStats stats;
+        QString error;
+        QVERIFY2(resolver.resolve(db, stats, error), qPrintable(error));
+
+        QSqlQuery q(db);
+        q.exec(QStringLiteral("SELECT primary_region_code FROM games WHERE game_id = 'game-reg'"));
+        QVERIFY(q.next());
+        QCOMPARE(q.value(0).toString(), QStringLiteral("EUR"));
+        db.close();
+    }
+    QSqlDatabase::removeDatabase(connectionName);
+}
+
+void CompendiumMergeResolverTest::resolve_ratingNormalizesPercentScale() {
+    const QString connectionName = QStringLiteral("merge_rating_scale");
+    {
+        QSqlDatabase db = QSqlDatabase::addDatabase(QStringLiteral("QSQLITE"), connectionName);
+        db.setDatabaseName(QStringLiteral(":memory:"));
+        QVERIFY(db.open());
+        QVERIFY(createSchema(db));
+        QVERIFY(execSql(db, QStringLiteral("INSERT INTO games (game_id, canonical_title) VALUES ('game-rate', 'Rated')")));
+        // Only percent-style rating available.
+        QVERIFY(execSql(db,
+            QStringLiteral("INSERT INTO game_facts (game_id, field_name, field_value, source_priority, confidence) "
+                           "VALUES ('game-rate', 'rating', '85', 100, 1.0)")));
+
+        MergeResolver resolver;
+        CompilerStats stats;
+        QString error;
+        QVERIFY2(resolver.resolve(db, stats, error), qPrintable(error));
+
+        QSqlQuery q(db);
+        q.exec(QStringLiteral("SELECT rating FROM games WHERE game_id = 'game-rate'"));
+        QVERIFY(q.next());
+        QCOMPARE(q.value(0).toDouble(), 8.5);
         db.close();
     }
     QSqlDatabase::removeDatabase(connectionName);

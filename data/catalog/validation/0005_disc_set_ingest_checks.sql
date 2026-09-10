@@ -1,5 +1,5 @@
 -- Disc set ingest quality checks (populated compendium databases)
--- Run with: validate-compendium-db.sh <db> data/compendium/validation/0005_disc_set_ingest_checks.sql
+-- Run with: sqlite3 -header -column <db_path> < data/catalog/validation/0005_disc_set_ingest_checks.sql
 --
 -- FAIL rows block full builds; WARN rows are informational unless --strict is passed.
 

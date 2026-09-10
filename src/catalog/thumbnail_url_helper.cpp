@@ -44,6 +44,8 @@ QStringList ThumbnailUrlHelper::generateThumbnailCandidates(
     QSet<QString> seen;
 
     auto addCandidate = [&](const QString &candidateName) {
+        if (candidateName.trimmed().isEmpty())
+            return;
         const QString url = buildThumbnailUrl(systemName, candidateName, type);
         if (!seen.contains(url)) {
             seen.insert(url);
@@ -57,11 +59,34 @@ QStringList ThumbnailUrlHelper::generateThumbnailCandidates(
     if (stripped != gameName)
         addCandidate(stripped);
 
+    // Drop trailing region tags: "Title (USA)", "Title (Europe)", etc.
+    static const QRegularExpression regionTagRe(
+        QStringLiteral("\\s*\\(\\s*(?:USA|Europe|Japan|World|Australia|Korea|Brazil|Asia|France|Germany|Spain|"
+                       "Italy|Sweden|Netherlands|Denmark|Finland|China|Taiwan|Hong Kong|Russia|Unknown|"
+                       "En|Ja|Fr|De|Es|It|Nl|Pt|Ru|Ko|Zh)\\s*\\)"),
+        QRegularExpression::CaseInsensitiveOption);
+    QString noRegion = gameName;
+    noRegion.remove(regionTagRe);
+    noRegion = noRegion.trimmed();
+    if (noRegion != gameName)
+        addCandidate(noRegion);
+    if (noRegion != stripped)
+        addCandidate(stripLanguageTags(noRegion));
+
+    // Drop disc markers for boxart lookup
+    static const QRegularExpression discRe(
+        QStringLiteral("\\s*\\(\\s*Disc\\s*\\d+\\s*\\)"), QRegularExpression::CaseInsensitiveOption);
+    QString noDisc = noRegion;
+    noDisc.remove(discRe);
+    noDisc = noDisc.trimmed();
+    if (noDisc != noRegion)
+        addCandidate(noDisc);
+
     return candidates;
 }
 
 QString ThumbnailUrlHelper::libretroFolderForAssetType(const QString &assetType) {
-    if (assetType == QStringLiteral("box"))
+    if (assetType == QStringLiteral("box") || assetType == QStringLiteral("boxart"))
         return QStringLiteral("Named_Boxarts");
     if (assetType == QStringLiteral("snap"))
         return QStringLiteral("Named_Snaps");

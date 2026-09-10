@@ -8,7 +8,7 @@
 namespace remustwo {
 
 /**
- * @brief Base class for wrappers around external CLI tools (chdman, 7z, unzip, etc.)
+ * @brief Base class for wrappers around external CLI tools (chdman, flips, xdelta3, etc.)
  *
  * Provides shared process execution, cancellation, and status tracking.
  */

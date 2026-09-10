@@ -3,6 +3,17 @@
     "md5": "5c5efc5cad24167b91d06ed3dc6bf524",
     "name": "Fixture Game (USA)",
     "coverUrl": "https://example.com/fixture-cover.jpg",
-    "description": "Synthetic fixture enrichment entry"
+    "description": "Synthetic fixture enrichment entry",
+    "igdb": {
+      "id": 1,
+      "name": "Fixture Game (USA)",
+      "summary": "Synthetic fixture enrichment entry",
+      "developer": "Fixture Dev",
+      "publisher": "Fixture Pub",
+      "first_release_date": "1990-01-01",
+      "cover": {
+        "url": "//example.com/fixture-cover.jpg"
+      }
+    }
   }
 ]

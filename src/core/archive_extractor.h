@@ -64,17 +64,10 @@ public:
     ~ArchiveExtractor() override = default;
 
     /**
-     * @brief Check which extraction formats are available (always all supported formats).
+     * @brief Check whether a format can be extracted (true when built with libarchive).
      */
-    QMap<ArchiveFormat, bool> getAvailableTools() const;
-
     bool canExtract(ArchiveFormat format) const;
     bool canExtract(const QString &path) const;
-
-    // No-op setters kept for API compatibility
-    void setUnzipPath(const QString &) { }
-    void setSevenZipPath(const QString &) { }
-    void setUnrarPath(const QString &) { }
 
     /**
      * @brief Get information about an archive without extracting

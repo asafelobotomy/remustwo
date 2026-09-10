@@ -13,10 +13,12 @@ namespace Constants {
         inline constexpr int METADATA_TIMEOUT_MS = 10000;
         inline constexpr int ARTWORK_TIMEOUT_MS = 60000;
         inline constexpr int HASHEOUS_TIMEOUT_MS = 5000;
+        inline constexpr int DAT_DOWNLOAD_TIMEOUT_MS = 120000;
         inline constexpr int CONNECT_TIMEOUT_MS = 3000;
 
         inline constexpr int HASHEOUS_RATE_LIMIT_MS = 400;
         inline constexpr int DEFAULT_RATE_LIMIT_MS = 500;
+        inline constexpr int ARTWORK_PROBE_TIMEOUT_MS = 5000;
 
         inline constexpr int MAX_RETRIES = 3;
         inline constexpr float RETRY_BACKOFF_MULTIPLIER = 1.5f;

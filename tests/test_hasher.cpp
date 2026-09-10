@@ -23,6 +23,7 @@ private slots:
     void testCalculateHashSingle();
     void testStripHeader();
     void testDetectHeaderSize();
+    void testContentHashesStripINes();
     void testMissingFile();
 };
 
@@ -113,6 +114,25 @@ void HasherTest::testDetectHeaderSize() {
 
     QCOMPARE(Hasher::detectHeaderSize(smcPath, ".smc"), 512);
     QCOMPARE(Hasher::detectHeaderSize(smcPath, ".bin"), 0);
+}
+
+void HasherTest::testContentHashesStripINes() {
+    QTemporaryDir dir;
+    QVERIFY(dir.isValid());
+    const QString path = dir.path() + "/game.nes";
+    QByteArray payload = QByteArray("NES\x1A") + QByteArray(12, '\x00') + QByteArray("ROMBODY");
+    QFile file(path);
+    QVERIFY(file.open(QIODevice::WriteOnly));
+    QVERIFY(file.write(payload) == payload.size());
+    file.close();
+
+    Hasher hasher;
+    const HashResult full = hasher.calculateHashes(path);
+    const HashResult content = hasher.calculateContentHashes(path);
+    QVERIFY(full.success);
+    QVERIFY(content.success);
+    QVERIFY(full.sha1 != content.sha1);
+    QCOMPARE(content.sha1, hasher.calculateHashes(path, true, 16).sha1);
 }
 
 void HasherTest::testMissingFile() {

@@ -45,7 +45,9 @@ public:
     Q_INVOKABLE void scanFolder(const QUrl &folder);
     Q_INVOKABLE void matchAll();
     Q_INVOKABLE void enrich(bool online, bool dryRun);
-    Q_INVOKABLE void organize(const QUrl &dest, bool dryRun, bool bundle, bool includeArt, const QString &convert);
+    Q_INVOKABLE void verify();
+    Q_INVOKABLE void organize(
+        const QUrl &dest, bool dryRun, bool bundle, bool includeArt, bool online, const QString &convert);
 
 signals:
     void statusChanged();
@@ -53,7 +55,9 @@ signals:
     void scanRequested(const QString &path);
     void matchAllRequested();
     void enrichRequested(bool online, bool dryRun);
-    void organizeRequested(const QString &dest, bool dryRun, bool bundle, bool includeArt, const QString &convert);
+    void verifyRequested();
+    void organizeRequested(const QString &dest, bool dryRun, bool bundle, bool includeArt, bool online,
+        const QString &convert);
 
 private slots:
     void onJobFinished(const QString &message);

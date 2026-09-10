@@ -8,10 +8,6 @@ namespace remustwo {
 ArchiveExtractor::ArchiveExtractor(QObject *parent)
     : QObject(parent) { }
 
-QMap<ArchiveFormat, bool> ArchiveExtractor::getAvailableTools() const {
-    return {};
-}
-
 bool ArchiveExtractor::canExtract(ArchiveFormat format) const {
 #ifdef REMUSTWO_HAS_LIBARCHIVE
     return format != ArchiveFormat::Unknown;

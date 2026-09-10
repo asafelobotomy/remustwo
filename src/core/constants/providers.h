@@ -4,7 +4,6 @@
 #include <QMap>
 #include <QList>
 #include <algorithm>
-#include "settings.h"
 
 namespace remustwo {
 namespace Constants {
@@ -12,17 +11,14 @@ namespace Constants {
 
         namespace Priority {
             inline constexpr int HASHEOUS = 91;
-            inline constexpr int LIBRETRO_THUMBNAILS = 10;
         }
 
         inline constexpr const char *HASHEOUS = "hasheous";
-        inline constexpr const char *LIBRETRO_THUMBNAILS = "libretro";
 
         /// Used by RaHasher / SystemResolver console-ID mappings only.
         inline constexpr const char *RETROACHIEVEMENTS = "retroachievements";
 
         inline const QString DISPLAY_HASHEOUS = QStringLiteral("Hasheous");
-        inline const QString DISPLAY_LIBRETRO_THUMBNAILS = QStringLiteral("Libretro Thumbnails");
 
         struct ProviderInfo {
             QString id;
@@ -42,8 +38,6 @@ namespace Constants {
                     QStringLiteral("Free hash database for cover URLs and descriptions (--online)"),
                     true, false, false, QStringLiteral(""), Priority::HASHEOUS, true } },
         };
-
-        namespace SettingsKeys = Settings::Providers;
 
         inline const ProviderInfo *getProviderInfo(const QString &providerId) {
             auto it = PROVIDER_REGISTRY.find(providerId);

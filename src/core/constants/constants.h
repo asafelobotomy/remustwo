@@ -2,11 +2,9 @@
 
 /**
  * @file constants.h
- * @brief Central constants library for Remus
+ * @brief Central constants library for remustwo
  *
- * This header provides a single location for all application constants, enums,
- * and configuration values. Eliminates scattered hardcoded strings and enables
- * type-safe constant access throughout the application.
+ * Single location for application constants, enums, and configuration values.
  *
  * Usage:
  *   #include "constants/constants.h"
@@ -16,7 +14,7 @@
  *   QString provider = Providers::HASHEOUS;
  *   auto info = Providers::getProviderInfo(provider);
  *
- * @note This is a header-only library. No compilation unit required.
+ * @note Header-only. No compilation unit required.
  */
 
 // Include all constant modules
@@ -51,20 +49,20 @@ namespace Constants {
      *   - 2: Added templates and settings constants (Phase 3)
      *   - 3: Added API, database schema, network, engines, and error constants
      */
-    inline constexpr int CONSTANTS_VERSION = 6;
+    inline constexpr int CONSTANTS_VERSION = 7;
 
     /**
      * @brief Application organization name for QSettings
      */
-    inline constexpr const char *SETTINGS_ORGANIZATION = "Remus";
+    inline constexpr const char *SETTINGS_ORGANIZATION = "remustwo";
 
     /**
      * @brief Application name for QSettings
      */
-    inline constexpr const char *SETTINGS_APPLICATION = "Remus";
+    inline constexpr const char *SETTINGS_APPLICATION = "remustwo";
 
     // APP_VERSION is defined in api.h
     // (single source of truth for version, also used by API::USER_AGENT)
 
 } // Constants
-} // Remus
+} // namespace remustwo

@@ -1,7 +1,11 @@
 #include "compendium_merge_resolver.h"
+#include "string_distance.h"
+
+#include "../core/disc_title_parser.h"
 
 #include <QSqlError>
 #include <QSqlQuery>
+#include <cmath>
 
 namespace remustwo {
 namespace Compendium {
@@ -25,20 +29,18 @@ namespace Compendium {
     // CTE syntax requires SQLite ≥ 3.35.
     //
     // Rules implemented per field:
-    //   canonical_title   exact_hash_source_priority (confidence DESC) + shortest_stable_title
-    //                     [normalized_name_similarity: deferred — requires string distance UDF]
-    //   developer         exact_hash_source_priority (source_item_id IS NOT NULL);
-    //                     fallback most_frequent_value
+    //   canonical_title   exact_hash_source_priority + shortest_stable_title (SQL);
+    //                     normalized_name_similarity (C++ when no strong hash title)
+    //   developer         exact_hash_source_priority; fallback most_frequent_value
     //   publisher         same as developer
-    //   release_date      full_date_preferred (LENGTH DESC) + higher_priority_source
-    //                     [newer_snapshot: deferred — requires snapshot timestamp join]
-    //   release_year      derive_from_release_date (join canonical release_date);
-    //                     fallback max_confidence_year
-    //   players_max       numeric_valid_range filter (1..16); fallback highest_confidence
-    //   description       longest_non_boilerplate (LENGTH DESC), excluding cross-game boilerplate
-    //   genre             normalized_taxonomy_match (de-prioritize generic labels, prefer multi-genre)
+    //   release_date      full_date_preferred + higher_priority_source + newer_snapshot
+    //   release_year      derive_from_release_date; fallback max_confidence_year
+    //   players_max       numeric_valid_range; fallback highest_confidence
+    //   description       longest_non_boilerplate
+    //   genre             normalized_taxonomy_match
+    //   region            explicit_region_codes then region_token_parse
+    //   rating            normalized_rating_scale (0..10, with 0..100 → /10 on materialize)
     //   all others        highest_priority (source_priority DESC, confidence DESC)
-    //                     covers: rating, primary_region_code, igdb_id, ra_game_id, and future fields
 
     bool MergeResolver::resolve(QSqlDatabase &db, CompilerStats &stats, QString &error) const {
         int total = 0;
@@ -69,6 +71,9 @@ namespace Compendium {
             return false;
         total += n;
         stats.titleFieldsResolved = n;
+
+        if (!applyNormalizedNameSimilarity(db, error))
+            return false;
 
         // ── 2. developer / publisher — step 1: exact_hash_source_priority ─────────
         // Facts linked to a DAT source_item (hash-identified ingest) win first.
@@ -128,23 +133,27 @@ namespace Compendium {
             return false;
         total += n;
 
-        // ── 3. release_date (full_date_preferred) ─────────────────────────────────
-        // LENGTH(field_value) DESC: full YYYY-MM-DD (10 chars) ranks above YYYY
-        // (4 chars). Source priority breaks remaining ties (higher_priority_source).
+        // ── 3. release_date (full_date + priority + newer_snapshot) ────────────────
+        // LENGTH DESC: full YYYY-MM-DD ranks above year-only. Source priority breaks
+        // remaining ties; COALESCE(fetched_at) prefers newer DAT snapshots.
         n = runInsert(db,
             QStringLiteral("INSERT OR REPLACE INTO canonical_resolution "
                            "    (game_id, field_name, selected_fact_id, resolved_by_rule) "
                            "SELECT game_id, field_name, fact_id, "
                            "    CASE WHEN cnt = 1 THEN 'single_source' ELSE 'full_date_preferred' END "
                            "FROM ( "
-                           "    SELECT game_id, field_name, fact_id, "
-                           "           COUNT(*) OVER (PARTITION BY game_id, field_name) AS cnt, "
+                           "    SELECT gf.game_id, gf.field_name, gf.fact_id, "
+                           "           COUNT(*) OVER (PARTITION BY gf.game_id, gf.field_name) AS cnt, "
                            "           ROW_NUMBER() OVER ( "
-                           "               PARTITION BY game_id, field_name "
-                           "               ORDER BY LENGTH(field_value) DESC, source_priority DESC, "
-                           "                        fact_id ASC "
+                           "               PARTITION BY gf.game_id, gf.field_name "
+                           "               ORDER BY LENGTH(gf.field_value) DESC, "
+                           "                        gf.source_priority DESC, "
+                           "                        COALESCE(ss.fetched_at, '') DESC, "
+                           "                        gf.fact_id ASC "
                            "           ) AS rn "
-                           "    FROM game_facts WHERE field_name = 'release_date' "
+                           "    FROM game_facts gf "
+                           "    LEFT JOIN source_snapshots ss ON ss.snapshot_id = gf.snapshot_id "
+                           "    WHERE gf.field_name = 'release_date' "
                            ") WHERE rn = 1"),
             error);
         if (n < 0)
@@ -302,9 +311,70 @@ namespace Compendium {
             return false;
         total += n;
 
-        // ── 8. Generic fields ─────────────────────────────────────────────────────
-        // Covers: rating (normalized_rating_scale approximated by source_priority),
-        // primary_region_code, external IDs, and any future field not handled above.
+        // ── 8. region (explicit_region_codes → region_token_parse) ─────────────────
+        n = runInsert(db,
+            QStringLiteral("INSERT OR REPLACE INTO canonical_resolution "
+                           "    (game_id, field_name, selected_fact_id, resolved_by_rule) "
+                           "SELECT game_id, 'region', fact_id, "
+                           "    CASE WHEN cnt = 1 THEN 'single_source' "
+                           "         WHEN is_explicit = 1 THEN 'explicit_region_codes' "
+                           "         ELSE 'region_token_parse' END "
+                           "FROM ( "
+                           "    SELECT gf.game_id, gf.fact_id, "
+                           "           COUNT(*) OVER (PARTITION BY gf.game_id) AS cnt, "
+                           "           CASE WHEN UPPER(TRIM(gf.field_value)) IN "
+                           "                   ('USA','EUR','JPN','JAP','EUROPE','JAPAN','WORLD','PAL','NTSC',"
+                           "                    'AU','BR','CN','DE','ES','FR','IT','KR','NL','RU','SE','TW','UK',"
+                           "                    'UNITED STATES','UNITED KINGDOM') "
+                           "                THEN 1 ELSE 0 END AS is_explicit, "
+                           "           ROW_NUMBER() OVER ( "
+                           "               PARTITION BY gf.game_id "
+                           "               ORDER BY "
+                           "                   CASE WHEN UPPER(TRIM(gf.field_value)) IN "
+                           "                           ('USA','EUR','JPN','JAP','EUROPE','JAPAN','WORLD','PAL',"
+                           "                            'NTSC','AU','BR','CN','DE','ES','FR','IT','KR','NL',"
+                           "                            'RU','SE','TW','UK','UNITED STATES','UNITED KINGDOM') "
+                           "                        THEN 0 ELSE 1 END, "
+                           "                   gf.source_priority DESC, gf.confidence DESC, gf.fact_id ASC "
+                           "           ) AS rn "
+                           "    FROM game_facts gf "
+                           "    WHERE gf.field_name = 'region' "
+                           ") WHERE rn = 1"),
+            error);
+        if (n < 0)
+            return false;
+        total += n;
+
+        // ── 9. rating (normalized_rating_scale) ───────────────────────────────────
+        n = runInsert(db,
+            QStringLiteral("INSERT OR REPLACE INTO canonical_resolution "
+                           "    (game_id, field_name, selected_fact_id, resolved_by_rule) "
+                           "SELECT game_id, 'rating', fact_id, "
+                           "    CASE WHEN cnt = 1 THEN 'single_source' ELSE 'normalized_rating_scale' END "
+                           "FROM ( "
+                           "    SELECT game_id, fact_id, "
+                           "           COUNT(*) OVER (PARTITION BY game_id) AS cnt, "
+                           "           ROW_NUMBER() OVER ( "
+                           "               PARTITION BY game_id "
+                           "               ORDER BY "
+                           "                   CASE "
+                           "                     WHEN CAST(field_value AS REAL) BETWEEN 0 AND 10 THEN 0 "
+                           "                     WHEN CAST(field_value AS REAL) BETWEEN 0 AND 100 THEN 1 "
+                           "                     ELSE 2 END, "
+                           "                   confidence DESC, source_priority DESC, fact_id ASC "
+                           "           ) AS rn "
+                           "    FROM game_facts "
+                           "    WHERE field_name = 'rating' "
+                           "      AND field_value GLOB '[0-9.]*' "
+                           "      AND CAST(field_value AS REAL) BETWEEN 0 AND 100 "
+                           ") WHERE rn = 1"),
+            error);
+        if (n < 0)
+            return false;
+        total += n;
+
+        // ── 10. Generic fields ────────────────────────────────────────────────────
+        // Covers external IDs and any future field not handled above.
         n = runInsert(db,
             QStringLiteral("INSERT OR REPLACE INTO canonical_resolution "
                            "    (game_id, field_name, selected_fact_id, resolved_by_rule) "
@@ -320,7 +390,8 @@ namespace Compendium {
                            "    FROM game_facts "
                            "    WHERE field_name NOT IN ( "
                            "        'title', 'canonical_title', 'developer', 'publisher', "
-                           "        'release_date', 'release_year', 'players_max', 'description', 'genre') "
+                           "        'release_date', 'release_year', 'players_max', 'description', "
+                           "        'genre', 'region', 'rating') "
                            ") WHERE rn = 1"),
             error);
         if (n < 0)
@@ -446,7 +517,6 @@ namespace Compendium {
             { "players_max", "players_max" },
             { "description", "description" },
             { "genre", "genre" },
-            { "rating", "rating" },
             { "region", "primary_region_code" },
             { "cover_url", "cover_url" },
         };
@@ -467,6 +537,29 @@ namespace Compendium {
             // runInsert handles both INSERT and UPDATE — the impl is identical.
             if (runInsert(db, sql, error) < 0)
                 return false;
+        }
+
+        // rating: materialize on 0..10 scale (percent-style values ÷ 10).
+        if (runInsert(db,
+                QStringLiteral("UPDATE games "
+                               "SET rating = ("
+                               "    SELECT CASE "
+                               "      WHEN CAST(gf.field_value AS REAL) > 10 "
+                               "       AND CAST(gf.field_value AS REAL) <= 100 "
+                               "      THEN CAST(gf.field_value AS REAL) / 10.0 "
+                               "      ELSE CAST(gf.field_value AS REAL) "
+                               "    END "
+                               "    FROM canonical_resolution cr "
+                               "    JOIN game_facts gf ON gf.fact_id = cr.selected_fact_id "
+                               "    WHERE cr.game_id = games.game_id AND cr.field_name = 'rating'"
+                               ") "
+                               "WHERE EXISTS ("
+                               "    SELECT 1 FROM canonical_resolution "
+                               "    WHERE game_id = games.game_id AND field_name = 'rating'"
+                               ")"),
+                error)
+            < 0) {
+            return false;
         }
 
         // Materialize canonical_confidence from the winning canonical_title fact.
@@ -504,6 +597,117 @@ namespace Compendium {
             return false;
         }
 
+        return true;
+    }
+
+    bool MergeResolver::applyNormalizedNameSimilarity(QSqlDatabase &db, QString &error) const {
+        QSqlQuery games(db);
+        if (!games.exec(QStringLiteral(
+                "SELECT gf.game_id "
+                "FROM game_facts gf "
+                "WHERE gf.field_name = 'title' "
+                "GROUP BY gf.game_id "
+                "HAVING COUNT(DISTINCT gf.field_value) > 1 "
+                "   AND MAX(gf.confidence) < 0.95 "
+                "   AND SUM(CASE WHEN gf.source_item_id IS NOT NULL AND gf.confidence >= 0.9 "
+                "                THEN 1 ELSE 0 END) = 0"))) {
+            error = games.lastError().text();
+            return false;
+        }
+
+        while (games.next()) {
+            const QString gameId = games.value(0).toString();
+
+            QStringList aliases;
+            {
+                QSqlQuery tableCheck(db);
+                if (tableCheck.exec(QStringLiteral(
+                        "SELECT 1 FROM sqlite_master WHERE type='table' AND name='game_names' LIMIT 1"))
+                    && tableCheck.next()) {
+                    QSqlQuery names(db);
+                    names.prepare(QStringLiteral("SELECT name_text FROM game_names WHERE game_id = ?"));
+                    names.addBindValue(gameId);
+                    if (names.exec()) {
+                        while (names.next())
+                            aliases.append(names.value(0).toString());
+                    }
+                }
+            }
+
+            struct Candidate {
+                qint64 factId = 0;
+                QString value;
+                int priority = 0;
+                float confidence = 0;
+            };
+            QList<Candidate> candidates;
+            QSqlQuery facts(db);
+            facts.prepare(QStringLiteral(
+                "SELECT fact_id, field_value, source_priority, confidence "
+                "FROM game_facts WHERE game_id = ? AND field_name = 'title'"));
+            facts.addBindValue(gameId);
+            if (!facts.exec()) {
+                error = facts.lastError().text();
+                return false;
+            }
+            while (facts.next()) {
+                Candidate c;
+                c.factId = facts.value(0).toLongLong();
+                c.value = facts.value(1).toString();
+                c.priority = facts.value(2).toInt();
+                c.confidence = static_cast<float>(facts.value(3).toDouble());
+                candidates.append(c);
+                if (aliases.isEmpty())
+                    aliases.append(c.value);
+            }
+            if (candidates.size() < 2)
+                continue;
+
+            QStringList normalizedAliases;
+            for (const QString &alias : aliases) {
+                const QString norm = DiscTitleParser::normalizeForIdentity(alias);
+                if (!norm.isEmpty())
+                    normalizedAliases.append(norm);
+            }
+            if (normalizedAliases.isEmpty())
+                continue;
+
+            qint64 bestFactId = 0;
+            float bestScore = -1.0f;
+            int bestLen = 0;
+            int bestPriority = -1;
+            for (const Candidate &c : candidates) {
+                const QString norm = DiscTitleParser::normalizeForIdentity(c.value);
+                if (norm.isEmpty())
+                    continue;
+                float score = 0.0f;
+                for (const QString &alias : normalizedAliases)
+                    score = std::max(score, normalizedLevenshteinSimilarity(norm, alias));
+                score += 0.01f * c.confidence;
+                const int len = norm.size();
+                if (score > bestScore + 1e-6f || (std::fabs(score - bestScore) <= 1e-6f && len < bestLen)
+                    || (std::fabs(score - bestScore) <= 1e-6f && len == bestLen && c.priority > bestPriority)) {
+                    bestScore = score;
+                    bestFactId = c.factId;
+                    bestLen = len;
+                    bestPriority = c.priority;
+                }
+            }
+            if (bestFactId <= 0 || bestScore < 0.55f)
+                continue;
+
+            QSqlQuery upsert(db);
+            upsert.prepare(QStringLiteral(
+                "INSERT OR REPLACE INTO canonical_resolution "
+                "(game_id, field_name, selected_fact_id, resolved_by_rule) "
+                "VALUES (?, 'title', ?, 'normalized_name_similarity')"));
+            upsert.addBindValue(gameId);
+            upsert.addBindValue(bestFactId);
+            if (!upsert.exec()) {
+                error = upsert.lastError().text();
+                return false;
+            }
+        }
         return true;
     }
 

@@ -52,6 +52,11 @@ public:
         const QString &filePath, const QString &algorithm, bool stripHeader = false, int headerSize = 0);
 
     /**
+     * @brief Detect header and hash ROM content (No-Intro style when a header is present).
+     */
+    HashResult calculateContentHashes(const QString &filePath);
+
+    /**
      * @brief Detect and calculate header size for systems that need it
      * @param filePath Path to file
      * @param extension File extension

@@ -40,6 +40,17 @@ QString SystemDetector::detectSystem(const QString &extension, const QString &pa
         return QString();
     }
 
+    // CHD is a compressed container — disc magic lives inside hunks, not at file offset 0.
+    // Prefer path heuristics; catalog match later corrects system_id from signature hits.
+    if (ext == QStringLiteral(".chd")) {
+        if (candidates.size() > 1 && !path.isEmpty()) {
+            const QString byPath = detectFromPath(path, candidates);
+            if (!byPath.isEmpty())
+                return byPath;
+        }
+        return candidates.first();
+    }
+
     // For ambiguous disc image extensions, probe magic bytes first
     if (candidates.size() > 1 && !path.isEmpty() && DiscMagicDetector::isDiscImageExtension(ext)) {
         DiscHeaderInfo discInfo = DiscMagicDetector::detect(path);
@@ -106,6 +117,17 @@ QString SystemDetector::detectFromPath(const QString &path, const QStringList &c
                 || lowerPath.contains("ules") || lowerPath.contains("uljm") || lowerPath.contains("ucus")
                 || lowerPath.contains("npuh") || lowerPath.contains("npjh"))) {
             return candidate;
+        }
+        if (candidate == "Dreamcast" && (lowerPath.contains("dreamcast") || lowerPath.contains("/dc/"))) {
+            return candidate;
+        }
+        if (candidate == "Saturn" && lowerPath.contains("saturn")) {
+            return candidate;
+        }
+        if ((candidate == "PlayStation" || candidate == "PlayStation 2" || candidate == "Dreamcast"
+                || candidate == "Saturn" || candidate == "GameCube" || candidate == "Wii" || candidate == "PSP")
+            && lowerPath.endsWith(QStringLiteral(".chd"))) {
+            // Fall through — path folder names above take priority; bare .chd stays ambiguous.
         }
     }
 

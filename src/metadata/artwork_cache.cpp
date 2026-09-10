@@ -2,6 +2,7 @@
 
 #include "../catalog/catalog.h"
 #include "../catalog/sql_pragmas.h"
+#include "../core/constants/network.h"
 #include "http_client.h"
 
 #include <QDateTime>
@@ -38,7 +39,7 @@ Result<QString> cacheArtwork(const QUrl &url, const QString &gameId, bool online
     }
 
     HttpClient client;
-    const HttpResponse response = client.get(url);
+    const HttpResponse response = client.get(url, Constants::Network::ARTWORK_TIMEOUT_MS);
     if (!response.error.isEmpty()) {
         return Result<QString>::fail(response.error);
     }
@@ -88,6 +89,14 @@ QString resolveArtworkPath(const QString &catalogDbPath, const QString &gameId, 
     QString coverUrl;
     if (query.exec() && query.next())
         coverUrl = query.value(0).toString().trimmed();
+    if (coverUrl.isEmpty()) {
+        QSqlQuery asset(catalog);
+        asset.prepare(QStringLiteral(
+            "SELECT url FROM game_assets WHERE game_id = ? AND asset_type = 'boxart' LIMIT 1"));
+        asset.addBindValue(gameId);
+        if (asset.exec() && asset.next())
+            coverUrl = asset.value(0).toString().trimmed();
+    }
 
     catalog.close();
     QSqlDatabase::removeDatabase(connectionName);

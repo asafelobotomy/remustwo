@@ -1,8 +1,8 @@
 #pragma once
 // Phase 1 compendium compiler: merge resolver.
-// Reads merge_policy rows from the compendium DB and materialises
-// canonical_resolution rows (and merge_conflicts where policy is ambiguous).
-// Fully data-driven — no hardcoded merge rules in C++.
+// Implements the merge_policy rules from seeds/0003_merge_policy.sql as
+// hardcoded SQL (and a small C++ title-similarity pass). The merge_policy
+// table documents rule keys/order; the resolver does not interpret it at runtime.
 
 #include "compendium_types.h"
 #include <QSqlDatabase>
@@ -17,6 +17,11 @@ namespace Compendium {
         // Updates stats.resolvedFields and stats.unresolvedConflicts.
         // Returns false on fatal DB error.
         bool resolve(QSqlDatabase &db, CompilerStats &stats, QString &error) const;
+
+    private:
+        /// When titles disagree and no high-confidence hash title exists, pick the
+        /// fact closest (normalized Levenshtein) to the game_names / title alias set.
+        bool applyNormalizedNameSimilarity(QSqlDatabase &db, QString &error) const;
     };
 
 } // namespace Compendium

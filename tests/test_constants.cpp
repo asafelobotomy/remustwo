@@ -222,7 +222,7 @@ void ConstantsTest::testTemplateVariables() {
 void ConstantsTest::testSettingsDefaults() {
     QCOMPARE(Settings::Defaults::NAMING_TEMPLATE, Templates::DEFAULT_SIMPLE);
     QCOMPARE(QString(Settings::Organize::NAMING_TEMPLATE), QStringLiteral("organize/naming_template"));
-    QCOMPARE(QString(Settings::Providers::HASHEOUS_CLIENT_API_KEY), QStringLiteral("hasheous/client_api_key"));
+    QCOMPARE(QString(Settings::Providers::HASHEOUS_BASE_URL), QStringLiteral("hasheous/base_url"));
     QCOMPARE(Settings::Defaults::PROVIDER_PRIORITY, QStringLiteral("Hasheous"));
 }
 
@@ -258,8 +258,7 @@ void ConstantsTest::testExportMappings() {
 }
 
 void ConstantsTest::testCliDefaults() {
-    QCOMPARE(QString::fromLatin1(Cli::APPLICATION_NAME), QStringLiteral("remus-cli"));
-    QCOMPARE(Cli::Options::JSON, QStringLiteral("json"));
+    QCOMPARE(QString::fromLatin1(Cli::APPLICATION_NAME), QStringLiteral("remustwo"));
     QCOMPARE(Cli::Defaults::EXPORT_FORMAT, Exports::Formats::CSV);
     QCOMPARE(QString::fromLatin1(Cli::Defaults::PATCH_FORMAT), QStringLiteral("bps"));
 }

@@ -1,5 +1,5 @@
 -- Phase 1 compendium validation report
--- Run with: sqlite3 -header -column <db_path> < data/compendium/validation/0001_phase1_checks.sql
+-- Run with: sqlite3 -header -column <db_path> < data/catalog/validation/0001_phase1_checks.sql
 SELECT 'seed_count.systems' AS check_name,
   CASE
     WHEN (
@@ -31,14 +31,14 @@ SELECT 'seed_count.merge_policy' AS check_name,
     WHEN (
       SELECT COUNT(*)
       FROM merge_policy
-    ) = 25 THEN 'PASS'
+    ) = 22 THEN 'PASS'
     ELSE 'FAIL'
   END AS status,
   (
     SELECT COUNT(*)
     FROM merge_policy
   ) AS observed,
-  25 AS expected;
+  22 AS expected;
 SELECT 'content.games_nonzero' AS check_name,
   CASE
     WHEN (
