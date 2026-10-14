@@ -83,14 +83,13 @@ namespace {
         return response.error.isEmpty() && response.statusCode >= 200 && response.statusCode < 400;
     }
 
-    QString pickLibretroUrl(const QString &systemName, const QString &title, const QString &assetType,
-        bool probe, const std::function<bool(const QUrl &)> &urlExists) {
+    QString pickLibretroUrl(const QString &systemName, const QString &title, const QString &assetType, bool probe,
+        const std::function<bool(const QUrl &)> &urlExists) {
         const QString folder = Metadata::ThumbnailUrlHelper::libretroFolderForAssetType(assetType);
         if (folder.isEmpty() || systemName.isEmpty() || title.isEmpty())
             return {};
 
-        const QStringList urls
-            = Metadata::ThumbnailUrlHelper::generateThumbnailCandidates(systemName, title, folder);
+        const QStringList urls = Metadata::ThumbnailUrlHelper::generateThumbnailCandidates(systemName, title, folder);
         if (urls.isEmpty())
             return {};
         if (!probe)
@@ -106,10 +105,9 @@ namespace {
     bool upsertAsset(QSqlDatabase &catalog, const QString &gameId, const QString &assetType, const QString &url,
         const QString &source) {
         QSqlQuery query(catalog);
-        query.prepare(QStringLiteral(
-            "INSERT INTO game_assets (game_id, asset_type, url, source, updated_at) "
-            "VALUES (?, ?, ?, ?, datetime('now')) "
-            "ON CONFLICT(game_id, asset_type) DO NOTHING"));
+        query.prepare(QStringLiteral("INSERT INTO game_assets (game_id, asset_type, url, source, updated_at) "
+                                     "VALUES (?, ?, ?, ?, datetime('now')) "
+                                     "ON CONFLICT(game_id, asset_type) DO NOTHING"));
         query.addBindValue(gameId);
         query.addBindValue(assetType);
         query.addBindValue(url);
@@ -119,18 +117,17 @@ namespace {
 
     bool applyHasheousMetadata(QSqlDatabase &catalog, const QString &gameId, const GameMetadata &metadata) {
         QSqlQuery update(catalog);
-        update.prepare(QStringLiteral(
-            "UPDATE games SET "
-            "canonical_title = COALESCE(NULLIF(?, ''), canonical_title), "
-            "cover_url = COALESCE(NULLIF(cover_url, ''), ?), "
-            "description = COALESCE(NULLIF(description, ''), ?), "
-            "developer = COALESCE(NULLIF(developer, ''), ?), "
-            "publisher = COALESCE(NULLIF(publisher, ''), ?), "
-            "release_date = COALESCE(NULLIF(release_date, ''), ?), "
-            "genre = COALESCE(NULLIF(?, ''), genre), "
-            "rating = CASE WHEN ? > 0 THEN ? ELSE rating END, "
-            "updated_at = datetime('now') "
-            "WHERE game_id = ?"));
+        update.prepare(QStringLiteral("UPDATE games SET "
+                                      "canonical_title = COALESCE(NULLIF(?, ''), canonical_title), "
+                                      "cover_url = COALESCE(NULLIF(cover_url, ''), ?), "
+                                      "description = COALESCE(NULLIF(description, ''), ?), "
+                                      "developer = COALESCE(NULLIF(developer, ''), ?), "
+                                      "publisher = COALESCE(NULLIF(publisher, ''), ?), "
+                                      "release_date = COALESCE(NULLIF(release_date, ''), ?), "
+                                      "genre = COALESCE(NULLIF(?, ''), genre), "
+                                      "rating = CASE WHEN ? > 0 THEN ? ELSE rating END, "
+                                      "updated_at = datetime('now') "
+                                      "WHERE game_id = ?"));
         update.addBindValue(metadata.title);
         update.addBindValue(metadata.boxArtUrl);
         update.addBindValue(metadata.description);
@@ -144,8 +141,8 @@ namespace {
         return update.exec();
     }
 
-    int applyIgdbAssets(QSqlDatabase &catalog, const QString &gameId, const GameMetadata &metadata,
-        const QSet<QString> &existing) {
+    int applyIgdbAssets(
+        QSqlDatabase &catalog, const QString &gameId, const GameMetadata &metadata, const QSet<QString> &existing) {
         int written = 0;
         auto upsert = [&](const QString &type, const QString &url, const QString &source) {
             if (url.isEmpty() || existing.contains(type))
@@ -214,8 +211,7 @@ Result<EnrichStats> enrichLibrary(
     auto lookup = options.lookup ? options.lookup : [&](const QString &crc, const QString &md5, const QString &sha1) {
         return provider.lookupByHashes(crc, md5, sha1);
     };
-    auto fetchIgdb = options.fetchIgdb ? options.fetchIgdb
-                                       : [&](int igdbId) { return provider.fetchIgdbGame(igdbId); };
+    auto fetchIgdb = options.fetchIgdb ? options.fetchIgdb : [&](int igdbId) { return provider.fetchIgdbGame(igdbId); };
     auto urlExists = options.urlExists ? options.urlExists : defaultUrlExists;
     const bool deepEnabled = options.deep && provider.hasApiKey();
     bool onlineLookupUsed = false;
@@ -244,8 +240,8 @@ Result<EnrichStats> enrichLibrary(
         QSet<QString> assets = existingAssetTypes(catalog, ownedGame.gameId);
         if (!coverUrl.trimmed().isEmpty() && !assets.contains(QStringLiteral("boxart"))) {
             if (!options.dryRun) {
-                if (upsertAsset(catalog, ownedGame.gameId, QStringLiteral("boxart"), coverUrl,
-                        QStringLiteral("cover_url")))
+                if (upsertAsset(
+                        catalog, ownedGame.gameId, QStringLiteral("boxart"), coverUrl, QStringLiteral("cover_url")))
                     ++stats.assetsWritten;
             }
             assets.insert(QStringLiteral("boxart"));
@@ -280,8 +276,7 @@ Result<EnrichStats> enrichLibrary(
             }
         }
 
-        const bool metadataComplete
-            = !needsHasheousFields(coverUrl, description, developer, publisher, releaseDate);
+        const bool metadataComplete = !needsHasheousFields(coverUrl, description, developer, publisher, releaseDate);
         const bool deepComplete = !deepEnabled || !needsDeepFields(genre, rating, assets);
         const bool assetsComplete = !needsLibretroAssets(assets);
         if (metadataComplete && deepComplete && assetsComplete) {
@@ -330,8 +325,7 @@ Result<EnrichStats> enrichLibrary(
                 onlineLookupUsed = true;
                 const GameMetadata proxy = fetchIgdb(igdbNumeric);
                 if (!proxy.title.isEmpty() || !proxy.genres.isEmpty() || proxy.rating > 0.0f
-                    || !proxy.screenshotUrls.isEmpty()
-                    || proxy.externalIds.contains(QStringLiteral("hero_url"))
+                    || !proxy.screenshotUrls.isEmpty() || proxy.externalIds.contains(QStringLiteral("hero_url"))
                     || proxy.externalIds.contains(QStringLiteral("banner_url"))) {
                     metadata = HasheousProvider::mergeMetadata(metadata, proxy);
                     ++stats.proxyFetched;
@@ -347,8 +341,8 @@ Result<EnrichStats> enrichLibrary(
         }
 
         if (!metadata.boxArtUrl.isEmpty() && !assets.contains(QStringLiteral("boxart"))) {
-            if (upsertAsset(
-                    catalog, ownedGame.gameId, QStringLiteral("boxart"), metadata.boxArtUrl, QStringLiteral("hasheous")))
+            if (upsertAsset(catalog, ownedGame.gameId, QStringLiteral("boxart"), metadata.boxArtUrl,
+                    QStringLiteral("hasheous")))
                 ++stats.assetsWritten;
         }
         stats.assetsWritten += applyIgdbAssets(catalog, ownedGame.gameId, metadata, assets);

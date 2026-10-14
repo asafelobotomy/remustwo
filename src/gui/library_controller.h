@@ -56,8 +56,8 @@ signals:
     void matchAllRequested();
     void enrichRequested(bool online, bool dryRun);
     void verifyRequested();
-    void organizeRequested(const QString &dest, bool dryRun, bool bundle, bool includeArt, bool online,
-        const QString &convert);
+    void organizeRequested(
+        const QString &dest, bool dryRun, bool bundle, bool includeArt, bool online, const QString &convert);
 
 private slots:
     void onJobFinished(const QString &message);

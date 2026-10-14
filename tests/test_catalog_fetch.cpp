@@ -29,8 +29,8 @@ void CatalogFetchTest::redumpSlugMapsCommonSystems() {
 }
 
 void CatalogFetchTest::redumpDatUrlUsesSlug() {
-    QCOMPARE(remustwo::redumpDatUrl(QStringLiteral("psx")).toString(),
-        QStringLiteral("http://redump.org/datfile/psx/"));
+    QCOMPARE(
+        remustwo::redumpDatUrl(QStringLiteral("psx")).toString(), QStringLiteral("http://redump.org/datfile/psx/"));
 }
 
 void CatalogFetchTest::fromDirIngestsFixtureDat() {
@@ -65,8 +65,8 @@ void CatalogFetchTest::extractDatFromZipRoundTrip() {
     QProcess zip;
     zip.start(QStringLiteral("python3"),
         { QStringLiteral("-c"),
-            QStringLiteral(
-                "import zipfile,sys; z=zipfile.ZipFile(sys.argv[1],'w'); z.write(sys.argv[2], 'fixture.dat'); z.close()"),
+            QStringLiteral("import zipfile,sys; z=zipfile.ZipFile(sys.argv[1],'w'); z.write(sys.argv[2], "
+                           "'fixture.dat'); z.close()"),
             zipPath, fixtureDat });
     QVERIFY(zip.waitForFinished(30000));
     QCOMPARE(zip.exitCode(), 0);

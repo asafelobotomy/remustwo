@@ -17,7 +17,7 @@ namespace {
     QSqlDatabase openCatalogDatabase(Database &database, QString &connectionName) {
         const QString path = database.compendiumDbPath();
         if (path.isEmpty() || !QFileInfo::exists(path))
-            return { };
+            return {};
 
         connectionName = QStringLiteral("m3u_catalog_%1").arg(QDateTime::currentMSecsSinceEpoch());
         QSqlDatabase db = QSqlDatabase::addDatabase(QStringLiteral("QSQLITE"), connectionName);
@@ -25,7 +25,7 @@ namespace {
         if (!db.open()) {
             QSqlDatabase::removeDatabase(connectionName);
             connectionName.clear();
-            return { };
+            return {};
         }
         return db;
     }

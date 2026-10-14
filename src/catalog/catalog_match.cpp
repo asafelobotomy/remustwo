@@ -180,9 +180,8 @@ namespace {
     }
 
     QString onlineCacheKey(const HashResult &hashes) {
-        const QString digest = !hashes.sha1.isEmpty() ? hashes.sha1
-            : (!hashes.md5.isEmpty()                 ? hashes.md5
-                                                     : hashes.crc32);
+        const QString digest
+            = !hashes.sha1.isEmpty() ? hashes.sha1 : (!hashes.md5.isEmpty() ? hashes.md5 : hashes.crc32);
         return QStringLiteral("match:hasheous:%1").arg(digest.trimmed().toLower());
     }
 
@@ -219,8 +218,8 @@ namespace {
         return Result<void>::ok();
     }
 
-    Result<CatalogMatch> upsertOnlineHit(QSqlDatabase &db, const HashResult &hashes, const CatalogOnlineHit &hit,
-        int systemId) {
+    Result<CatalogMatch> upsertOnlineHit(
+        QSqlDatabase &db, const HashResult &hashes, const CatalogOnlineHit &hit, int systemId) {
         if (hit.title.trimmed().isEmpty())
             return Result<CatalogMatch>::fail(QStringLiteral("Hasheous hit missing title"));
         if (systemId <= 0)
@@ -237,14 +236,14 @@ namespace {
             : QStringLiteral("hasheous:%1").arg(hit.externalId.trimmed());
 
         QSqlQuery insertGame(db);
-        insertGame.prepare(QStringLiteral(
-            "INSERT INTO games (game_id, system_id, canonical_title, description, cover_url, "
-            "canonical_confidence) VALUES (?, ?, ?, ?, ?, 0.5) "
-            "ON CONFLICT(game_id) DO UPDATE SET "
-            "canonical_title = COALESCE(NULLIF(excluded.canonical_title, ''), games.canonical_title), "
-            "description = COALESCE(NULLIF(excluded.description, ''), games.description), "
-            "cover_url = COALESCE(NULLIF(excluded.cover_url, ''), games.cover_url), "
-            "updated_at = CURRENT_TIMESTAMP"));
+        insertGame.prepare(
+            QStringLiteral("INSERT INTO games (game_id, system_id, canonical_title, description, cover_url, "
+                           "canonical_confidence) VALUES (?, ?, ?, ?, ?, 0.5) "
+                           "ON CONFLICT(game_id) DO UPDATE SET "
+                           "canonical_title = COALESCE(NULLIF(excluded.canonical_title, ''), games.canonical_title), "
+                           "description = COALESCE(NULLIF(excluded.description, ''), games.description), "
+                           "cover_url = COALESCE(NULLIF(excluded.cover_url, ''), games.cover_url), "
+                           "updated_at = CURRENT_TIMESTAMP"));
         insertGame.addBindValue(gameId);
         insertGame.addBindValue(systemId);
         insertGame.addBindValue(hit.title.trimmed());
@@ -343,8 +342,7 @@ Result<int> matchLibrary(const QString &dbPath, const QString &libraryPath) {
     return Result<int>::ok(stats->matched);
 }
 
-Result<MatchLibraryStats> matchLibrary(
-    const QString &dbPath, const QString &libraryPath, const MatchOptions &options) {
+Result<MatchLibraryStats> matchLibrary(const QString &dbPath, const QString &libraryPath, const MatchOptions &options) {
     Database library;
     if (!library.initialize(libraryPath)) {
         return Result<MatchLibraryStats>::fail(QStringLiteral("Failed to open library database"));

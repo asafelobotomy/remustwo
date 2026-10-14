@@ -80,7 +80,7 @@ Database::AppliedPatchRecord Database::findAppliedPatchByOutputHashes(
             ORDER BY applied_at DESC
             LIMIT 1
         )")
-            .arg(conditions.join(" OR ")));
+                      .arg(conditions.join(" OR ")));
 
     for (const QVariant &value : values) {
         query.addBindValue(value);

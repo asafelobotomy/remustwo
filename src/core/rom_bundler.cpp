@@ -137,8 +137,8 @@ namespace {
         if (folderName.isEmpty() && !file.baseTitle.isEmpty())
             folderName = DiscSetUtils::extractBaseTitle(file.baseTitle);
         if (folderName.isEmpty()) {
-            folderName = DiscSetUtils::extractBaseTitle(DiscSetUtils::labelPath(
-                file.currentPath, file.archivePath, file.archiveInternalPath, file.filename));
+            folderName = DiscSetUtils::extractBaseTitle(
+                DiscSetUtils::labelPath(file.currentPath, file.archivePath, file.archiveInternalPath, file.filename));
         }
         if (folderName.isEmpty())
             folderName = QFileInfo(file.filename).completeBaseName();
@@ -341,8 +341,8 @@ QString RomBundler::folderNameForBundle(const FileRecord &file, const GameMetada
     return DiscSetUtils::sanitizeFolderComponent(safeFileStem(metadata, file));
 }
 
-BundleResult RomBundler::bundleGameFolder(const FileRecord &file, const GameMetadata &metadata,
-    const QString &destinationDir, const BundleConfig &config) {
+BundleResult RomBundler::bundleGameFolder(
+    const FileRecord &file, const GameMetadata &metadata, const QString &destinationDir, const BundleConfig &config) {
     BundleResult result;
     result.skippedDiscSet = true;
 
@@ -380,8 +380,8 @@ BundleResult RomBundler::bundleGameFolder(const FileRecord &file, const GameMeta
     }
 
     const QString payloadPath = convertIfNeeded(sourcePath, file, config, payloadExtension);
-    const QString destRom = result.outputPath + QLatin1Char('/')
-        + QFileInfo(sourcePath).completeBaseName() + payloadExtension;
+    const QString destRom
+        = result.outputPath + QLatin1Char('/') + QFileInfo(sourcePath).completeBaseName() + payloadExtension;
     if (!copyReplacing(payloadPath, destRom)) {
         result.error = QStringLiteral("Failed to copy disc into folder");
         return result;

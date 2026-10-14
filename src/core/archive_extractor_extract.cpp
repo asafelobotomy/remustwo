@@ -126,11 +126,11 @@ QList<ExtractionResult> ArchiveExtractor::batchExtract(
 
 QByteArray ArchiveExtractor::readMemberPrefix(const QString &archivePath, const QString &memberPath, qint64 maxBytes) {
     if (maxBytes <= 0)
-        return { };
+        return {};
 
     const QString normalized = normalizeArchiveMemberPath(memberPath);
     if (normalized.isEmpty())
-        return { };
+        return {};
 
     using ArchivePtr = std::unique_ptr<archive, decltype(&archive_read_free)>;
     ArchivePtr a(archive_read_new(), archive_read_free);
@@ -139,7 +139,7 @@ QByteArray ArchiveExtractor::readMemberPrefix(const QString &archivePath, const 
 
     const QByteArray pathBytes = archivePath.toUtf8();
     if (archive_read_open_filename(a.get(), pathBytes.constData(), 65536) != ARCHIVE_OK)
-        return { };
+        return {};
 
     archive_entry *entry = nullptr;
     while (archive_read_next_header(a.get(), &entry) == ARCHIVE_OK) {
@@ -166,7 +166,7 @@ QByteArray ArchiveExtractor::readMemberPrefix(const QString &archivePath, const 
         return data;
     }
 
-    return { };
+    return {};
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -257,8 +257,7 @@ ExtractionResult ArchiveExtractor::extractToDir(
         result.filesExtracted++;
         result.extractedFiles.append(destPath);
         result.bytesExtracted += QFileInfo(destPath).size();
-        emit extractionProgress(
-            singleMember.isEmpty() ? 0 : 100, normalized);
+        emit extractionProgress(singleMember.isEmpty() ? 0 : 100, normalized);
 
         if (!singleMember.isEmpty()) {
             result.success = true;

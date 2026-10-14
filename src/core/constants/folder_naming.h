@@ -97,7 +97,7 @@ namespace Constants {
 
             // For Scheme::None, return empty — caller handles flat output
             if (scheme == Scheme::None)
-                return { };
+                return {};
 
             // --- Default / ES-DE (majority-vote baseline) ---
             // Other schemes only override where they diverge.
@@ -432,7 +432,7 @@ namespace Constants {
                 return QStringLiteral("loopy");
 
             default:
-                return { };
+                return {};
             }
         }
 

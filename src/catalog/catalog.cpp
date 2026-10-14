@@ -13,33 +13,33 @@ namespace remustwo::catalog {
 
 namespace {
 
-int migrationVersionFromFilename(const QString &filename) {
-    const int underscore = filename.indexOf(QLatin1Char('_'));
-    if (underscore <= 0)
-        return -1;
-    bool ok = false;
-    const int version = filename.left(underscore).toInt(&ok);
-    return ok ? version : -1;
-}
+    int migrationVersionFromFilename(const QString &filename) {
+        const int underscore = filename.indexOf(QLatin1Char('_'));
+        if (underscore <= 0)
+            return -1;
+        bool ok = false;
+        const int version = filename.left(underscore).toInt(&ok);
+        return ok ? version : -1;
+    }
 
-Result<int> currentUserVersion(QSqlDatabase &database) {
-    QSqlQuery query(database);
-    if (!query.exec(QStringLiteral("PRAGMA user_version"))) {
-        return Result<int>::fail(query.lastError().text());
+    Result<int> currentUserVersion(QSqlDatabase &database) {
+        QSqlQuery query(database);
+        if (!query.exec(QStringLiteral("PRAGMA user_version"))) {
+            return Result<int>::fail(query.lastError().text());
+        }
+        if (!query.next()) {
+            return Result<int>::fail(QStringLiteral("PRAGMA user_version returned no rows"));
+        }
+        return Result<int>::ok(query.value(0).toInt());
     }
-    if (!query.next()) {
-        return Result<int>::fail(QStringLiteral("PRAGMA user_version returned no rows"));
-    }
-    return Result<int>::ok(query.value(0).toInt());
-}
 
-Result<void> setUserVersion(QSqlDatabase &database, int version) {
-    QSqlQuery query(database);
-    if (!query.exec(QStringLiteral("PRAGMA user_version = %1").arg(version))) {
-        return Result<void>::fail(query.lastError().text());
+    Result<void> setUserVersion(QSqlDatabase &database, int version) {
+        QSqlQuery query(database);
+        if (!query.exec(QStringLiteral("PRAGMA user_version = %1").arg(version))) {
+            return Result<void>::fail(query.lastError().text());
+        }
+        return Result<void>::ok();
     }
-    return Result<void>::ok();
-}
 
 } // namespace
 

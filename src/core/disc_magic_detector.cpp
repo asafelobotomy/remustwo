@@ -55,7 +55,7 @@ bool DiscMagicDetector::isDiscImageExtension(const QString &extension) {
 DiscHeaderInfo DiscMagicDetector::detect(const QString &filePath) {
     QFile file(filePath);
     if (!file.open(QIODevice::ReadOnly)) {
-        return { };
+        return {};
     }
 
     const qint64 fileSize = file.size();
@@ -136,13 +136,13 @@ DiscHeaderInfo DiscMagicDetector::detectFromData(const QByteArray &data, qint64 
         }
     }
 
-    return { };
+    return {};
 }
 
 DiscHeaderInfo DiscMagicDetector::extractDreamcastHeader(const QString &filePath) {
     QFile file(filePath);
     if (!file.open(QIODevice::ReadOnly)) {
-        return { };
+        return {};
     }
 
     // CDI files embed the data track at an unpredictable offset.
@@ -157,7 +157,7 @@ DiscHeaderInfo DiscMagicDetector::extractDreamcastHeader(const QString &filePath
         // Re-read in 256KB chunks up to 16MB.
         QFile scanFile(filePath);
         if (!scanFile.open(QIODevice::ReadOnly))
-            return { };
+            return {};
 
         constexpr qint64 MAX_SCAN = 16LL * 1024 * 1024;
         const qint64 scanLimit = qMin(scanFile.size(), MAX_SCAN);
@@ -190,7 +190,7 @@ DiscHeaderInfo DiscMagicDetector::scanForDreamcastHeader(const QByteArray &data)
 
     int pos = data.indexOf(MAGIC);
     if (pos < 0) {
-        return { };
+        return {};
     }
 
     DiscHeaderInfo info;
@@ -243,7 +243,7 @@ DiscHeaderInfo DiscMagicDetector::detectFromArchive(
     ArchiveExtractor extractor;
     const QByteArray data = extractor.readMemberPrefix(archivePath, memberPath, PROBE_SIZE);
     if (data.isEmpty())
-        return { };
+        return {};
     return detectFromData(data, memberSize);
 }
 

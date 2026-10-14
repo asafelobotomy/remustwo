@@ -45,7 +45,7 @@ namespace {
 
     bool lookupDiscContextInDb(QSqlDatabase &compendiumDb, const QString &systemInternalName, const QString &crc32,
         const QString &md5, const QString &sha1, CompendiumFileDiscContext &out) {
-        out = { };
+        out = {};
         if (!compendiumDiscSetsAvailable(compendiumDb))
             return false;
 
@@ -131,7 +131,7 @@ namespace {
 
         QSqlQuery query(libraryDb);
         query.prepare(QStringLiteral("SELECT crc32, md5, sha1 FROM files WHERE id IN (%1) AND hash_calculated = 1")
-                .arg(placeholders.join(QLatin1Char(','))));
+                          .arg(placeholders.join(QLatin1Char(','))));
         for (int fileId : ownedFileIds)
             query.addBindValue(fileId);
 
@@ -233,9 +233,9 @@ namespace {
                 const int libraryDiscNumber = fileDiscQuery.value(0).toInt();
                 if (libraryDiscNumber > 0 && ctx.discNumber > 0 && libraryDiscNumber != ctx.discNumber) {
                     report.warnings.append(QStringLiteral("File %1: library disc %2, catalog disc %3")
-                            .arg(fileId)
-                            .arg(libraryDiscNumber)
-                            .arg(ctx.discNumber));
+                                               .arg(fileId)
+                                               .arg(libraryDiscNumber)
+                                               .arg(ctx.discNumber));
                 }
             }
         }
@@ -284,7 +284,7 @@ QString resolveBundledCompendiumDbPath() {
         if (QFileInfo::exists(cleaned))
             return cleaned;
     }
-    return { };
+    return {};
 }
 
 bool lookupCompendiumDiscContextFromDb(QSqlDatabase &compendiumDb, const QString &systemInternalName,
@@ -314,7 +314,7 @@ bool compendiumDiscSetsAvailable(QSqlDatabase &compendiumDb) {
 }
 
 bool lookupCatalogDiscSetSummary(QSqlDatabase &compendiumDb, const QString &setKey, CatalogDiscSetSummary &out) {
-    out = { };
+    out = {};
     if (setKey.isEmpty() || !compendiumDiscSetsAvailable(compendiumDb))
         return false;
 

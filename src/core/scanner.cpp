@@ -109,8 +109,8 @@ void Scanner::scanDirectory(const QString &dirPath, QList<ScanResult> &results) 
     // Phase 1: Walk the directory tree sequentially.
     // Plain ROM files are processed immediately; archives are queued for Phase 2.
     // isInExcludedDirectory() modifies mutable caches — must run on the main thread.
-    QDirIterator it(dirPath, QDir::Files | QDir::Dirs | QDir::NoDotAndDotDot | QDir::NoSymLinks,
-        QDirIterator::Subdirectories);
+    QDirIterator it(
+        dirPath, QDir::Files | QDir::Dirs | QDir::NoDotAndDotDot | QDir::NoSymLinks, QDirIterator::Subdirectories);
 
     while (it.hasNext()) {
         if (m_cancelRequested.load(std::memory_order_relaxed))
@@ -150,7 +150,7 @@ void Scanner::scanDirectory(const QString &dirPath, QList<ScanResult> &results) 
     const QList<QList<ScanResult>> parallelResults
         = QtConcurrent::blockingMapped(archivePaths, [this](const QString &path) -> QList<ScanResult> {
               if (m_cancelRequested.load(std::memory_order_relaxed))
-                  return { };
+                  return {};
               ArchiveExtractor localExtractor;
               return processArchiveWithExtractor(path, localExtractor);
           });

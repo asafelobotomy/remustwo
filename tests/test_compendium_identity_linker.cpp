@@ -10,8 +10,8 @@ class CompendiumIdentityLinkerTest : public QObject {
     Q_OBJECT
 
 private:
-    static SourceRecordEnvelope envelope(const QString &title, const QString &sha1, const QString &serial, int systemId,
-        const QString &region) {
+    static SourceRecordEnvelope envelope(
+        const QString &title, const QString &sha1, const QString &serial, int systemId, const QString &region) {
         SourceRecordEnvelope rec;
         rec.titleRaw = title;
         rec.hashes.sha1 = sha1;

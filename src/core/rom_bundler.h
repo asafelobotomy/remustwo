@@ -50,8 +50,8 @@ private:
 
     QString generateMarkerContent(const FileRecord &file, const GameMetadata &metadata) const;
     QString folderNameForBundle(const FileRecord &file, const GameMetadata &metadata) const;
-    BundleResult bundleGameFolder(const FileRecord &file, const GameMetadata &metadata,
-        const QString &destinationDir, const BundleConfig &config);
+    BundleResult bundleGameFolder(const FileRecord &file, const GameMetadata &metadata, const QString &destinationDir,
+        const BundleConfig &config);
 };
 
 } // namespace remustwo

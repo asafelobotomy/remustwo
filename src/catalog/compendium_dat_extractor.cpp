@@ -205,7 +205,7 @@ namespace Compendium {
         const QFileInfo info(filePath);
         if (!info.exists() || !info.isFile()) {
             error = QStringLiteral("DAT file not found: %1").arg(filePath);
-            return { };
+            return {};
         }
 
         // Parse header and all entries in one file pass
@@ -228,7 +228,7 @@ namespace Compendium {
                 const remustwo::DatParseResult xmlResult = xmlParser.parse(filePath);
                 if (!xmlResult.success || xmlResult.entries.isEmpty()) {
                     error = QStringLiteral("DAT file produced no entries: %1").arg(filePath);
-                    return { };
+                    return {};
                 }
                 if (!xmlResult.header.name.isEmpty())
                     systemHint = xmlResult.header.name;
@@ -237,7 +237,7 @@ namespace Compendium {
                     entries.append(datRomEntryToClrMame(re));
             } else {
                 error = QStringLiteral("DAT file produced no entries: %1").arg(filePath);
-                return { };
+                return {};
             }
         }
 

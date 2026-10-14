@@ -162,7 +162,7 @@ namespace Compendium {
 
     QString CompendiumNormalizer::resolveRegionCode(const QString &rawRegion) const {
         if (rawRegion.isEmpty()) {
-            return { };
+            return {};
         }
 
         // Try the first comma-delimited token (e.g. "USA, Europe" → "USA").
@@ -173,7 +173,7 @@ namespace Compendium {
             return m_regionToCode.value(key);
         }
 
-        return { };
+        return {};
     }
 
     bool CompendiumNormalizer::serialMatchesRegion(const QString &serial, const QString &regionCode) {

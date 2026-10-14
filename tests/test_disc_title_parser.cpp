@@ -86,8 +86,7 @@ void DiscTitleParserTest::normalizeForIdentityStripsDiscTag() {
 
 void DiscTitleParserTest::betaKeepsDistinctIdentityBase() {
     const DiscTitleInfo retail = DiscTitleParser::parseTitle(QStringLiteral("Castlevania - Bloodlines (USA)"));
-    const DiscTitleInfo beta
-        = DiscTitleParser::parseTitle(QStringLiteral("Castlevania - Bloodlines (USA) (Beta 1)"));
+    const DiscTitleInfo beta = DiscTitleParser::parseTitle(QStringLiteral("Castlevania - Bloodlines (USA) (Beta 1)"));
     QVERIFY(retail.identityBase != beta.identityBase);
     QVERIFY(beta.identityBase.contains(QStringLiteral("beta")));
 }

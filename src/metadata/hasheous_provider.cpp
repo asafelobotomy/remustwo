@@ -42,10 +42,9 @@ namespace {
             if (url.isEmpty())
                 return;
             QSqlQuery asset(database);
-            asset.prepare(QStringLiteral(
-                "INSERT INTO game_assets (game_id, asset_type, url, source, updated_at) "
-                "VALUES (?, ?, ?, ?, datetime('now')) "
-                "ON CONFLICT(game_id, asset_type) DO NOTHING"));
+            asset.prepare(QStringLiteral("INSERT INTO game_assets (game_id, asset_type, url, source, updated_at) "
+                                         "VALUES (?, ?, ?, ?, datetime('now')) "
+                                         "ON CONFLICT(game_id, asset_type) DO NOTHING"));
             asset.addBindValue(gameId);
             asset.addBindValue(type);
             asset.addBindValue(url);
@@ -56,7 +55,8 @@ namespace {
         if (!metadata.screenshotUrls.isEmpty())
             upsert(QStringLiteral("snap"), metadata.screenshotUrls.first(), QStringLiteral("igdb"));
         upsert(QStringLiteral("hero"), metadata.externalIds.value(QStringLiteral("hero_url")), QStringLiteral("igdb"));
-        upsert(QStringLiteral("banner"), metadata.externalIds.value(QStringLiteral("banner_url")), QStringLiteral("igdb"));
+        upsert(
+            QStringLiteral("banner"), metadata.externalIds.value(QStringLiteral("banner_url")), QStringLiteral("igdb"));
     }
 
     GameMetadata parseHasheousGame(const QJsonObject &obj) {
@@ -92,7 +92,8 @@ namespace {
             if (!entry.isObject())
                 continue;
             const QJsonObject meta = entry.toObject();
-            if (meta.value(QStringLiteral("source")).toString().compare(QStringLiteral("IGDB"), Qt::CaseInsensitive) != 0)
+            if (meta.value(QStringLiteral("source")).toString().compare(QStringLiteral("IGDB"), Qt::CaseInsensitive)
+                != 0)
                 continue;
             const QString id = meta.value(QStringLiteral("id")).toVariant().toString();
             if (!id.isEmpty())
@@ -134,17 +135,16 @@ namespace {
 
         const QString gameId = find.value(0).toString();
         QSqlQuery update(database);
-        update.prepare(QStringLiteral(
-            "UPDATE games SET canonical_title = COALESCE(NULLIF(?, ''), canonical_title), "
-            "cover_url = COALESCE(NULLIF(?, ''), cover_url), "
-            "description = COALESCE(NULLIF(?, ''), description), "
-            "developer = COALESCE(NULLIF(?, ''), developer), "
-            "publisher = COALESCE(NULLIF(?, ''), publisher), "
-            "release_date = COALESCE(NULLIF(?, ''), release_date), "
-            "genre = COALESCE(NULLIF(?, ''), genre), "
-            "rating = CASE WHEN ? > 0 THEN ? ELSE rating END, "
-            "updated_at = datetime('now') "
-            "WHERE game_id = ?"));
+        update.prepare(QStringLiteral("UPDATE games SET canonical_title = COALESCE(NULLIF(?, ''), canonical_title), "
+                                      "cover_url = COALESCE(NULLIF(?, ''), cover_url), "
+                                      "description = COALESCE(NULLIF(?, ''), description), "
+                                      "developer = COALESCE(NULLIF(?, ''), developer), "
+                                      "publisher = COALESCE(NULLIF(?, ''), publisher), "
+                                      "release_date = COALESCE(NULLIF(?, ''), release_date), "
+                                      "genre = COALESCE(NULLIF(?, ''), genre), "
+                                      "rating = CASE WHEN ? > 0 THEN ? ELSE rating END, "
+                                      "updated_at = datetime('now') "
+                                      "WHERE game_id = ?"));
         update.addBindValue(metadata.title);
         update.addBindValue(metadata.boxArtUrl);
         update.addBindValue(metadata.description);
@@ -172,9 +172,8 @@ HasheousProvider::HasheousProvider(const QString &baseUrl)
         return;
     }
     QSettings settings;
-    const QString configured = settings.value(QString::fromLatin1(Constants::Settings::Providers::HASHEOUS_BASE_URL))
-                                   .toString()
-                                   .trimmed();
+    const QString configured
+        = settings.value(QString::fromLatin1(Constants::Settings::Providers::HASHEOUS_BASE_URL)).toString().trimmed();
     m_baseUrl = configured.isEmpty() ? QString::fromLatin1(Constants::API::HASHEOUS_BASE_URL) : configured;
 }
 
@@ -256,8 +255,8 @@ GameMetadata HasheousProvider::fetchIgdbGame(int igdbId) const {
     QUrl url(m_baseUrl + QString::fromLatin1(Constants::API::HASHEOUS_IGDB_GAME_PROXY));
     QUrlQuery query;
     query.addQueryItem(QStringLiteral("Id"), QString::number(igdbId));
-    query.addQueryItem(QStringLiteral("expandColumns"),
-        QStringLiteral("cover,genres,involved_companies,screenshots,artworks"));
+    query.addQueryItem(
+        QStringLiteral("expandColumns"), QStringLiteral("cover,genres,involved_companies,screenshots,artworks"));
     url.setQuery(query);
 
     QHash<QString, QString> headers;

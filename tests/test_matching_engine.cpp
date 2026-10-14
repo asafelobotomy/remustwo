@@ -96,13 +96,13 @@ void MatchingEngineTest::testExtractGameTitleBasic() {
 }
 
 void MatchingEngineTest::testExtractGameTitleWithRegion() {
-    QCOMPARE(MatchingEngine::extractGameTitle("Sonic the Hedgehog (USA, Europe).md"),
-        QStringLiteral("Sonic the Hedgehog"));
+    QCOMPARE(
+        MatchingEngine::extractGameTitle("Sonic the Hedgehog (USA, Europe).md"), QStringLiteral("Sonic the Hedgehog"));
 }
 
 void MatchingEngineTest::testExtractGameTitleWithVersion() {
-    QCOMPARE(MatchingEngine::extractGameTitle("Street Fighter II (USA) (Rev A).sfc"),
-        QStringLiteral("Street Fighter II"));
+    QCOMPARE(
+        MatchingEngine::extractGameTitle("Street Fighter II (USA) (Rev A).sfc"), QStringLiteral("Street Fighter II"));
 }
 
 void MatchingEngineTest::testExtractGameTitleEmpty() {

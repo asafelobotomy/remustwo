@@ -46,7 +46,7 @@ QMap<QString, QString> ClrMameProParser::parseHeader(const QString &filePath) {
 QList<ClrMameProEntry> ClrMameProParser::parseAll(const QString &filePath, QMap<QString, QString> &outHeader) {
     QFile file(filePath);
     if (!file.open(QIODevice::ReadOnly | QIODevice::Text)) {
-        return { };
+        return {};
     }
     QTextStream in(&file);
     const QString content = in.readAll();

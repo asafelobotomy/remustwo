@@ -106,7 +106,8 @@ GameMetadata parseIgdbGameObject(const QJsonObject &igdb) {
     if (companies.isObject()) {
         for (auto it = companies.toObject().constBegin(); it != companies.toObject().constEnd(); ++it) {
             const QJsonObject row = it.value().toObject();
-            const QString name = row.value(QStringLiteral("company")).toObject().value(QStringLiteral("name")).toString();
+            const QString name
+                = row.value(QStringLiteral("company")).toObject().value(QStringLiteral("name")).toString();
             if (name.isEmpty())
                 continue;
             if (row.value(QStringLiteral("developer")).toBool() && metadata.developer.isEmpty())

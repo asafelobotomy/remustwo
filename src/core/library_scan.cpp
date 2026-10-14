@@ -102,8 +102,8 @@ Result<ScanLibraryStats> scanLibrary(
             hashes = hasher.calculateContentHashes(hashPath);
             if (hashes.success) {
                 populateExtendedHashes(hashes, { hashPath, record.systemId, item.extension });
-                if (db.updateFileHashes(fileId, hashes.crc32, hashes.md5, hashes.sha1, hashes.raMd5, hashes.chdSha1,
-                        hashes.rvzSha1))
+                if (db.updateFileHashes(
+                        fileId, hashes.crc32, hashes.md5, hashes.sha1, hashes.raMd5, hashes.chdSha1, hashes.rvzSha1))
                     ++stats.hashed;
             }
         }

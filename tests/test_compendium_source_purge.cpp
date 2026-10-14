@@ -20,7 +20,7 @@ QString openPurgeDb(QSqlDatabase &db) {
     db = QSqlDatabase::addDatabase(QStringLiteral("QSQLITE"), name);
     db.setDatabaseName(QStringLiteral(":memory:"));
     if (!db.open())
-        return { };
+        return {};
 
     const bool ok = execSql(db, QStringLiteral("CREATE TABLE games (game_id TEXT PRIMARY KEY)"))
         && execSql(db,
@@ -70,7 +70,7 @@ QString openPurgeDb(QSqlDatabase &db) {
                            " disc_set_id INTEGER NOT NULL,"
                            " signature_id INTEGER)"));
 
-    return ok ? name : QString { };
+    return ok ? name : QString {};
 }
 
 int countForSource(QSqlDatabase &db, const QString &table, const QString &sourceId) {

@@ -49,11 +49,11 @@ namespace Compendium {
         bool purgeChangedSources = false;
         /// Load identity maps from the DB before linking (incremental builds).
         bool preloadIdentityLinker = false;
-    /// Parallel DAT extraction workers (0 = @c QThread::idealThreadCount(), 1 = serial).
-    int extractParallelism = 0;
-    /// Fired as each DAT finishes parallel/serial extraction (before DB insert).
-    std::function<void(int current, int total, const QString &sourceId)> onExtractProgress;
-};
+        /// Parallel DAT extraction workers (0 = @c QThread::idealThreadCount(), 1 = serial).
+        int extractParallelism = 0;
+        /// Fired as each DAT finishes parallel/serial extraction (before DB insert).
+        std::function<void(int current, int total, const QString &sourceId)> onExtractProgress;
+    };
 
     class CompendiumCompilerService {
     public:
@@ -64,7 +64,7 @@ namespace Compendium {
         // Returns populated stats on success; sets error and returns {} on failure.
         // onProgress (optional) is called after each enabled source is processed.
         CompilerStats run(const CompendiumBuildConfig &config, QSqlDatabase &db, QString &error,
-            ProgressCallback onProgress = nullptr, const CompilerRunOptions &options = { });
+            ProgressCallback onProgress = nullptr, const CompilerRunOptions &options = {});
     };
 
     // Merge game rows that share the same (system_id, canonical_title) or the same

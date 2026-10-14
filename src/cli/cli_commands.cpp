@@ -169,8 +169,8 @@ namespace {
         options.fromDir = parser.value(QStringLiteral("from-dir"));
         options.dryRun = parser.isSet(QStringLiteral("dry-run"));
         if (options.system.isEmpty() && options.fromDir.isEmpty()) {
-            return printError(QStringLiteral(
-                "catalog fetch: require --system NAME|slug or --from-dir DIR (No-Intro / local DATs)"));
+            return printError(
+                QStringLiteral("catalog fetch: require --system NAME|slug or --from-dir DIR (No-Intro / local DATs)"));
         }
         auto result = fetchCatalog(catalogDbPath(parser), options);
         if (!result) {
@@ -537,8 +537,8 @@ int run(int argc, char *argv[]) {
         { QStringLiteral("convert"), QStringLiteral("Bundle conversion: auto or never"), QStringLiteral("mode") });
     parser.addOption({ QStringLiteral("system"), QStringLiteral("System name or Redump slug for catalog fetch"),
         QStringLiteral("name") });
-    parser.addOption({ QStringLiteral("from-dir"), QStringLiteral("Directory of .dat files to ingest"),
-        QStringLiteral("dir") });
+    parser.addOption(
+        { QStringLiteral("from-dir"), QStringLiteral("Directory of .dat files to ingest"), QStringLiteral("dir") });
     parser.addOption({ QStringLiteral("no-archives"), QStringLiteral("Do not scan inside zip/7z/rar archives") });
     parser.addOption({ QStringLiteral("all"), QStringLiteral("With organize undo: undo all pending operations") });
     parser.addOption({ { QStringLiteral("o"), QStringLiteral("output") }, QStringLiteral("Output path for patch apply"),

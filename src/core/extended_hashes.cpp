@@ -11,9 +11,8 @@ void populateExtendedHashes(HashResult &hashes, const ExtendedHashInput &input) 
     if (!hashes.success || input.path.isEmpty())
         return;
 
-    const QString ext = input.extension.startsWith(QLatin1Char('.'))
-        ? input.extension.toLower()
-        : QStringLiteral(".") + input.extension.toLower();
+    const QString ext = input.extension.startsWith(QLatin1Char('.')) ? input.extension.toLower()
+                                                                     : QStringLiteral(".") + input.extension.toLower();
 
     if (ext == Constants::Files::CHD) {
         const ChdHeaderDigest digest = readChdHeaderDigest(input.path);
