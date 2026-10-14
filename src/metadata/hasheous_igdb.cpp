@@ -89,7 +89,9 @@ GameMetadata parseIgdbGameObject(const QJsonObject &igdb) {
 
     const QJsonValue genres = igdb.value(QStringLiteral("genres"));
     if (genres.isObject()) {
-        for (auto it = genres.toObject().constBegin(); it != genres.toObject().constEnd(); ++it) {
+        // Keep the object alive for the loop: iterating toObject() temporaries leaves dangling iterators.
+        const QJsonObject genreMap = genres.toObject();
+        for (auto it = genreMap.constBegin(); it != genreMap.constEnd(); ++it) {
             const QString name = it.value().toObject().value(QStringLiteral("name")).toString();
             if (!name.isEmpty())
                 metadata.genres.append(name);
@@ -104,7 +106,9 @@ GameMetadata parseIgdbGameObject(const QJsonObject &igdb) {
 
     const QJsonValue companies = igdb.value(QStringLiteral("involved_companies"));
     if (companies.isObject()) {
-        for (auto it = companies.toObject().constBegin(); it != companies.toObject().constEnd(); ++it) {
+        // Keep the object alive for the loop: iterating toObject() temporaries leaves dangling iterators.
+        const QJsonObject companyMap = companies.toObject();
+        for (auto it = companyMap.constBegin(); it != companyMap.constEnd(); ++it) {
             const QJsonObject row = it.value().toObject();
             const QString name
                 = row.value(QStringLiteral("company")).toObject().value(QStringLiteral("name")).toString();
