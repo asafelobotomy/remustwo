@@ -15,7 +15,7 @@ jobs:
         run: |
           sudo apt-get update
           sudo apt-get install -y --no-install-recommends \
-            build-essential cmake ninja-build clang-format \
+            build-essential cmake ninja-build clang-format-18 \
             qt6-base-dev libqt6sql6-sqlite zlib1g-dev libarchive-dev qt6-declarative-dev
 
       - name: Refuse copyrighted dumps in git
@@ -30,8 +30,12 @@ jobs:
             exit 1
           fi
 
+      # Pinned to clang-format 18 (ubuntu-24.04 ships 18.1.3); formatting output
+      # differs between major versions, so format locally with the same major.
       - name: clang-format
-        run: find src tests -name '*.cpp' -o -name '*.h' | xargs clang-format --dry-run --Werror
+        run: |
+          clang-format-18 --version
+          find src tests \( -name '*.cpp' -o -name '*.h' \) -print0 | xargs -0 clang-format-18 --dry-run --Werror
 
       - name: Configure
         run: cmake -S . -B build -G Ninja -DREMUSTWO_ENABLE_WARNINGS=ON -DCMAKE_BUILD_TYPE=Debug -DREMUSTWO_ENABLE_LIBARCHIVE=ON -DREMUSTWO_BUILD_GUI=ON
