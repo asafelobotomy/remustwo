@@ -35,8 +35,8 @@ namespace Constants {
         inline const QMap<QString, ProviderInfo> PROVIDER_REGISTRY = {
             { HASHEOUS,
                 { HASHEOUS, DISPLAY_HASHEOUS,
-                    QStringLiteral("Free hash database for cover URLs and descriptions (--online)"),
-                    true, false, false, QStringLiteral(""), Priority::HASHEOUS, true } },
+                    QStringLiteral("Free hash database for cover URLs and descriptions (--online)"), true, false, false,
+                    QStringLiteral(""), Priority::HASHEOUS, true } },
         };
 
         inline const ProviderInfo *getProviderInfo(const QString &providerId) {

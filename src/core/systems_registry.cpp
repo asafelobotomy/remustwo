@@ -20,23 +20,22 @@ namespace {
         QSqlDatabase db = QSqlDatabase::addDatabase(QStringLiteral("QSQLITE"), conn);
         db.setDatabaseName(QStringLiteral(":memory:"));
         if (!db.open())
-            return { };
+            return {};
 
         QSqlQuery create(db);
-        if (!create.exec(QStringLiteral(
-                "CREATE TABLE systems ("
-                "system_id INTEGER PRIMARY KEY, "
-                "internal_name TEXT NOT NULL, "
-                "display_name TEXT NOT NULL, "
-                "manufacturer TEXT, "
-                "generation INTEGER, "
-                "release_year INTEGER, "
-                "preferred_hash TEXT NOT NULL, "
-                "is_disc_based INTEGER NOT NULL DEFAULT 0, "
-                "is_handheld INTEGER NOT NULL DEFAULT 0)"))) {
+        if (!create.exec(QStringLiteral("CREATE TABLE systems ("
+                                        "system_id INTEGER PRIMARY KEY, "
+                                        "internal_name TEXT NOT NULL, "
+                                        "display_name TEXT NOT NULL, "
+                                        "manufacturer TEXT, "
+                                        "generation INTEGER, "
+                                        "release_year INTEGER, "
+                                        "preferred_hash TEXT NOT NULL, "
+                                        "is_disc_based INTEGER NOT NULL DEFAULT 0, "
+                                        "is_handheld INTEGER NOT NULL DEFAULT 0)"))) {
             db.close();
             QSqlDatabase::removeDatabase(conn);
-            return { };
+            return {};
         }
 
         QString error;
@@ -44,7 +43,7 @@ namespace {
         if (!CatalogSql::executeSqlScript(db, seedPath, error)) {
             db.close();
             QSqlDatabase::removeDatabase(conn);
-            return { };
+            return {};
         }
 
         QMap<int, SystemDef> registry;
@@ -54,7 +53,7 @@ namespace {
                                        "FROM systems ORDER BY system_id"))) {
             db.close();
             QSqlDatabase::removeDatabase(conn);
-            return { };
+            return {};
         }
 
         while (query.next()) {

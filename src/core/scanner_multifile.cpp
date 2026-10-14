@@ -129,14 +129,14 @@ namespace {
 
         QTemporaryDir tempDir;
         if (!tempDir.isValid()) {
-            return { };
+            return {};
         }
 
         ArchiveExtractor extractor;
         ExtractionResult extraction
             = extractor.extractFile(result.archivePath, result.archiveInternalPath, tempDir.path());
         if (!extraction.success || extraction.extractedFiles.isEmpty()) {
-            return { };
+            return {};
         }
 
         return parseGdiTrackFiles(extraction.extractedFiles.first());

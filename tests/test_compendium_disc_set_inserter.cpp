@@ -24,8 +24,8 @@ private:
         return query.exec(sql);
     }
 
-    static bool openSeededCatalog(const QString &dbPath, const QString &connectionName, QSqlDatabase &db,
-        QString &error) {
+    static bool openSeededCatalog(
+        const QString &dbPath, const QString &connectionName, QSqlDatabase &db, QString &error) {
         auto initResult = catalog::init(dbPath);
         if (!initResult) {
             error = initResult.error();

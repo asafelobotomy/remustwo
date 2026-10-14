@@ -12,7 +12,7 @@ namespace {
 
     QSqlDatabase compendiumDatabase(const QString &connectionName) {
         if (connectionName.isEmpty())
-            return { };
+            return {};
         return QSqlDatabase::database(connectionName);
     }
 
@@ -38,7 +38,7 @@ QList<DiscSetCompletenessReport> VerificationEngine::discSetCompleteness(
     const QString &compendiumGameId, const QList<int> &ownedFileIds) const {
     QSqlDatabase compendiumDb = compendiumDatabase(m_compendiumConnectionName);
     if (!compendiumDb.isOpen() || compendiumGameId.isEmpty())
-        return { };
+        return {};
 
     return computeDiscSetCompleteness(compendiumDb, m_database->database(), compendiumGameId, ownedFileIds);
 }
@@ -47,7 +47,7 @@ DiscSetCompletenessReport VerificationEngine::discSetCompletenessBySetKey(
     const QString &setKey, const QList<int> &ownedFileIds) const {
     QSqlDatabase compendiumDb = compendiumDatabase(m_compendiumConnectionName);
     if (!compendiumDb.isOpen() || setKey.isEmpty())
-        return { };
+        return {};
 
     return computeDiscSetCompletenessBySetKey(compendiumDb, m_database->database(), setKey, ownedFileIds);
 }

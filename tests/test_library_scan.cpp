@@ -124,8 +124,8 @@ private slots:
         QProcess zip;
         zip.start(QStringLiteral("python3"),
             { QStringLiteral("-c"),
-                QStringLiteral(
-                    "import zipfile,sys; z=zipfile.ZipFile(sys.argv[1],'w'); z.write(sys.argv[2],'fixture.bin'); z.close()"),
+                QStringLiteral("import zipfile,sys; z=zipfile.ZipFile(sys.argv[1],'w'); "
+                               "z.write(sys.argv[2],'fixture.bin'); z.close()"),
                 zipPath, romSource });
         QVERIFY(zip.waitForFinished(30000));
         QCOMPARE(zip.exitCode(), 0);

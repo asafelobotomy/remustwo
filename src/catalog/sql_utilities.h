@@ -94,9 +94,8 @@ inline bool executeSqlScript(QSqlDatabase &database, const QString &path, QStrin
 }
 
 inline QString catalogDataRoot() {
-    return qEnvironmentVariableIsSet("REMUSTWO_CATALOG_DATA")
-        ? QString::fromLocal8Bit(qgetenv("REMUSTWO_CATALOG_DATA"))
-        : QStringLiteral(REMUSTWO_CATALOG_DATA_DIR);
+    return qEnvironmentVariableIsSet("REMUSTWO_CATALOG_DATA") ? QString::fromLocal8Bit(qgetenv("REMUSTWO_CATALOG_DATA"))
+                                                              : QStringLiteral(REMUSTWO_CATALOG_DATA_DIR);
 }
 
 inline QString migrationsDir() {
@@ -111,13 +110,13 @@ inline QStringList loadMigrationManifest(const QString &manifestPath, QString &e
     QFile file(manifestPath);
     if (!file.open(QIODevice::ReadOnly)) {
         error = QStringLiteral("Failed to open migration manifest: %1").arg(manifestPath);
-        return { };
+        return {};
     }
 
     const QJsonDocument doc = QJsonDocument::fromJson(file.readAll());
     if (!doc.isObject()) {
         error = QStringLiteral("Invalid migration manifest JSON: %1").arg(manifestPath);
-        return { };
+        return {};
     }
 
     QStringList migrations;

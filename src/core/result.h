@@ -19,7 +19,7 @@ public:
     }
 
     static Result fail(QString error) {
-        return Result(ErrorTag { }, std::move(error));
+        return Result(ErrorTag {}, std::move(error));
     }
 
     explicit operator bool() const {
@@ -61,7 +61,7 @@ private:
         : m_error(std::move(error))
         , m_hasValue(false) { }
 
-    T m_value { };
+    T m_value {};
     QString m_error;
     bool m_hasValue = false;
 };
@@ -75,11 +75,11 @@ template <> class Result<void> {
 
 public:
     static Result ok() {
-        return Result { };
+        return Result {};
     }
 
     static Result fail(QString error) {
-        return Result(ErrorTag { }, std::move(error));
+        return Result(ErrorTag {}, std::move(error));
     }
 
     explicit operator bool() const {

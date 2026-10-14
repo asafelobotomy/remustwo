@@ -78,8 +78,8 @@ namespace {
     }
 
     Result<QString> findExtractedDat(const QString &destDir) {
-        QDirIterator it(destDir, { QStringLiteral("*.dat"), QStringLiteral("*.DAT") }, QDir::Files,
-            QDirIterator::Subdirectories);
+        QDirIterator it(
+            destDir, { QStringLiteral("*.dat"), QStringLiteral("*.DAT") }, QDir::Files, QDirIterator::Subdirectories);
         if (it.hasNext())
             return Result<QString>::ok(it.next());
         return Result<QString>::fail(QStringLiteral("No .dat found in Redump zip"));
@@ -92,12 +92,11 @@ namespace {
         QProcess proc;
         proc.setWorkingDirectory(destDir);
         proc.start(QStringLiteral("unzip"),
-            { QStringLiteral("-o"), QStringLiteral("-j"), zipPath, QStringLiteral("*.dat"),
-                QStringLiteral("*.DAT") });
+            { QStringLiteral("-o"), QStringLiteral("-j"), zipPath, QStringLiteral("*.dat"), QStringLiteral("*.DAT") });
         if (!proc.waitForStarted(5000)) {
-            return Result<QString>::fail(QStringLiteral(
-                "Redump DAT extract needs libarchive (rebuild with -DREMUSTWO_ENABLE_LIBARCHIVE=ON) "
-                "or an unzip binary on PATH"));
+            return Result<QString>::fail(
+                QStringLiteral("Redump DAT extract needs libarchive (rebuild with -DREMUSTWO_ENABLE_LIBARCHIVE=ON) "
+                               "or an unzip binary on PATH"));
         }
         if (!proc.waitForFinished(120000) || proc.exitCode() != 0) {
             const QString err = QString::fromLocal8Bit(proc.readAllStandardError()).trimmed();
@@ -108,8 +107,7 @@ namespace {
 
     Result<QString> downloadRedumpZip(const QString &slug, const QString &zipPath) {
         HttpClient client;
-        const HttpResponse response
-            = client.get(redumpDatUrl(slug), Constants::Network::DAT_DOWNLOAD_TIMEOUT_MS);
+        const HttpResponse response = client.get(redumpDatUrl(slug), Constants::Network::DAT_DOWNLOAD_TIMEOUT_MS);
         if (!response.error.isEmpty())
             return Result<QString>::fail(response.error);
         if (response.statusCode != 200 || response.body.isEmpty()) {
@@ -130,8 +128,8 @@ namespace {
         return Result<QString>::ok(zipPath);
     }
 
-    Result<int> ingestDatPaths(const QString &catalogDbPath, const QStringList &datPaths, bool dryRun,
-        CatalogFetchStats &stats) {
+    Result<int> ingestDatPaths(
+        const QString &catalogDbPath, const QStringList &datPaths, bool dryRun, CatalogFetchStats &stats) {
         for (const QString &datPath : datPaths) {
             stats.datPaths.append(datPath);
             if (dryRun) {
@@ -232,8 +230,8 @@ Result<CatalogFetchStats> fetchCatalog(const QString &catalogDbPath, const Catal
         const QDir dir(options.fromDir);
         if (!dir.exists())
             return Result<CatalogFetchStats>::fail(QStringLiteral("from-dir does not exist: ") + options.fromDir);
-        const QFileInfoList files = dir.entryInfoList({ QStringLiteral("*.dat"), QStringLiteral("*.DAT") },
-            QDir::Files, QDir::Name);
+        const QFileInfoList files
+            = dir.entryInfoList({ QStringLiteral("*.dat"), QStringLiteral("*.DAT") }, QDir::Files, QDir::Name);
         if (files.isEmpty())
             return Result<CatalogFetchStats>::fail(QStringLiteral("No .dat files in ") + options.fromDir);
 
@@ -255,8 +253,7 @@ Result<CatalogFetchStats> fetchCatalog(const QString &catalogDbPath, const Catal
 
     const QStringList slugs = resolveSlugs(options.system);
     if (slugs.isEmpty()) {
-        return Result<CatalogFetchStats>::fail(
-            QStringLiteral("Unknown Redump system: ") + options.system
+        return Result<CatalogFetchStats>::fail(QStringLiteral("Unknown Redump system: ") + options.system
             + QStringLiteral(" (use a remustwo system name, Redump slug, or --from-dir)"));
     }
 

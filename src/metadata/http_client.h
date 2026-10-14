@@ -18,8 +18,7 @@ struct HttpResponse {
 class HttpClient {
 public:
     explicit HttpClient(QNetworkAccessManager *manager = nullptr);
-    HttpResponse get(const QUrl &url, int timeoutMs = 5000,
-        const QHash<QString, QString> &headers = {}) const;
+    HttpResponse get(const QUrl &url, int timeoutMs = 5000, const QHash<QString, QString> &headers = {}) const;
     HttpResponse head(const QUrl &url, int timeoutMs = 5000) const;
     HttpResponse postJson(const QUrl &url, const QByteArray &jsonBody, int timeoutMs = 5000,
         const QHash<QString, QString> &headers = {}) const;

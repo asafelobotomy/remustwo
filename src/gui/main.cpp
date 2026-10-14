@@ -10,7 +10,8 @@
 
 int main(int argc, char *argv[]) {
     QGuiApplication app(argc, argv);
-    QCoreApplication::setApplicationName(QString::fromLatin1(remustwo::Constants::SETTINGS_APPLICATION) + QStringLiteral("-gui"));
+    QCoreApplication::setApplicationName(
+        QString::fromLatin1(remustwo::Constants::SETTINGS_APPLICATION) + QStringLiteral("-gui"));
     QCoreApplication::setOrganizationName(QString::fromLatin1(remustwo::Constants::SETTINGS_ORGANIZATION));
     QCoreApplication::setApplicationVersion(QString::fromLatin1(remustwo::Constants::APP_VERSION));
 

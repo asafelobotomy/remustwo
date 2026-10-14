@@ -9,12 +9,12 @@ namespace remustwo {
 
 namespace {
 
-bool catalogHasTable(QSqlDatabase &db, const QString &tableName) {
-    QSqlQuery q(db);
-    q.prepare(QStringLiteral("SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = ? LIMIT 1"));
-    q.addBindValue(tableName);
-    return q.exec() && q.next();
-}
+    bool catalogHasTable(QSqlDatabase &db, const QString &tableName) {
+        QSqlQuery q(db);
+        q.prepare(QStringLiteral("SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = ? LIMIT 1"));
+        q.addBindValue(tableName);
+        return q.exec() && q.next();
+    }
 
 } // namespace
 

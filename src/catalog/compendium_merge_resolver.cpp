@@ -602,15 +602,14 @@ namespace Compendium {
 
     bool MergeResolver::applyNormalizedNameSimilarity(QSqlDatabase &db, QString &error) const {
         QSqlQuery games(db);
-        if (!games.exec(QStringLiteral(
-                "SELECT gf.game_id "
-                "FROM game_facts gf "
-                "WHERE gf.field_name = 'title' "
-                "GROUP BY gf.game_id "
-                "HAVING COUNT(DISTINCT gf.field_value) > 1 "
-                "   AND MAX(gf.confidence) < 0.95 "
-                "   AND SUM(CASE WHEN gf.source_item_id IS NOT NULL AND gf.confidence >= 0.9 "
-                "                THEN 1 ELSE 0 END) = 0"))) {
+        if (!games.exec(QStringLiteral("SELECT gf.game_id "
+                                       "FROM game_facts gf "
+                                       "WHERE gf.field_name = 'title' "
+                                       "GROUP BY gf.game_id "
+                                       "HAVING COUNT(DISTINCT gf.field_value) > 1 "
+                                       "   AND MAX(gf.confidence) < 0.95 "
+                                       "   AND SUM(CASE WHEN gf.source_item_id IS NOT NULL AND gf.confidence >= 0.9 "
+                                       "                THEN 1 ELSE 0 END) = 0"))) {
             error = games.lastError().text();
             return false;
         }
@@ -621,8 +620,8 @@ namespace Compendium {
             QStringList aliases;
             {
                 QSqlQuery tableCheck(db);
-                if (tableCheck.exec(QStringLiteral(
-                        "SELECT 1 FROM sqlite_master WHERE type='table' AND name='game_names' LIMIT 1"))
+                if (tableCheck.exec(
+                        QStringLiteral("SELECT 1 FROM sqlite_master WHERE type='table' AND name='game_names' LIMIT 1"))
                     && tableCheck.next()) {
                     QSqlQuery names(db);
                     names.prepare(QStringLiteral("SELECT name_text FROM game_names WHERE game_id = ?"));
@@ -642,9 +641,8 @@ namespace Compendium {
             };
             QList<Candidate> candidates;
             QSqlQuery facts(db);
-            facts.prepare(QStringLiteral(
-                "SELECT fact_id, field_value, source_priority, confidence "
-                "FROM game_facts WHERE game_id = ? AND field_name = 'title'"));
+            facts.prepare(QStringLiteral("SELECT fact_id, field_value, source_priority, confidence "
+                                         "FROM game_facts WHERE game_id = ? AND field_name = 'title'"));
             facts.addBindValue(gameId);
             if (!facts.exec()) {
                 error = facts.lastError().text();
@@ -697,10 +695,9 @@ namespace Compendium {
                 continue;
 
             QSqlQuery upsert(db);
-            upsert.prepare(QStringLiteral(
-                "INSERT OR REPLACE INTO canonical_resolution "
-                "(game_id, field_name, selected_fact_id, resolved_by_rule) "
-                "VALUES (?, 'title', ?, 'normalized_name_similarity')"));
+            upsert.prepare(QStringLiteral("INSERT OR REPLACE INTO canonical_resolution "
+                                          "(game_id, field_name, selected_fact_id, resolved_by_rule) "
+                                          "VALUES (?, 'title', ?, 'normalized_name_similarity')"));
             upsert.addBindValue(gameId);
             upsert.addBindValue(bestFactId);
             if (!upsert.exec()) {

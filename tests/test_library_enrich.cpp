@@ -74,9 +74,9 @@ private slots:
         QVERIFY(gapped);
         QSqlDatabase gapDb = *gapped;
         QSqlQuery gap(gapDb);
-        QVERIFY(gap.exec(QStringLiteral(
-            "UPDATE games SET cover_url = '', description = '', developer = NULL, publisher = NULL, "
-            "release_date = NULL")));
+        QVERIFY(gap.exec(
+            QStringLiteral("UPDATE games SET cover_url = '', description = '', developer = NULL, publisher = NULL, "
+                           "release_date = NULL")));
         gap.finish();
         const QString gapConn = gapDb.connectionName();
         gapDb.close();
@@ -107,17 +107,16 @@ private slots:
         QVERIFY(check);
         QSqlDatabase checkDb = *check;
         QSqlQuery q(checkDb);
-        QVERIFY(q.exec(QStringLiteral(
-            "SELECT description, developer, publisher, release_date, cover_url FROM games "
-            "WHERE description = 'from lookup'")));
+        QVERIFY(q.exec(QStringLiteral("SELECT description, developer, publisher, release_date, cover_url FROM games "
+                                      "WHERE description = 'from lookup'")));
         QVERIFY(q.next());
         QCOMPARE(q.value(0).toString(), QStringLiteral("from lookup"));
         QCOMPARE(q.value(1).toString(), QStringLiteral("Lookup Dev"));
         QCOMPARE(q.value(2).toString(), QStringLiteral("Lookup Pub"));
         QCOMPARE(q.value(3).toString(), QStringLiteral("1991-02-03"));
         QCOMPARE(q.value(4).toString(), QStringLiteral("https://example.com/cover.jpg"));
-        QVERIFY(q.exec(QStringLiteral(
-            "SELECT COUNT(*) FROM game_assets WHERE asset_type = 'boxart' AND source = 'hasheous'")));
+        QVERIFY(q.exec(
+            QStringLiteral("SELECT COUNT(*) FROM game_assets WHERE asset_type = 'boxart' AND source = 'hasheous'")));
         QVERIFY(q.next());
         QCOMPARE(q.value(0).toInt(), 1);
         const QString checkConn = checkDb.connectionName();
@@ -143,12 +142,11 @@ private slots:
             QVERIFY(cat);
             QSqlDatabase db = std::move(*cat);
             QSqlQuery q(db);
-            QVERIFY(q.exec(QStringLiteral(
-                "UPDATE games SET cover_url = '', description = 'already has text', "
-                "developer = 'Dev', publisher = 'Pub', release_date = '1990-01-01'")));
-            QVERIFY(q.exec(QStringLiteral(
-                "UPDATE systems SET libretro_name = 'Nintendo - Nintendo Entertainment System' "
-                "WHERE system_id = (SELECT system_id FROM games LIMIT 1)")));
+            QVERIFY(q.exec(QStringLiteral("UPDATE games SET cover_url = '', description = 'already has text', "
+                                          "developer = 'Dev', publisher = 'Pub', release_date = '1990-01-01'")));
+            QVERIFY(
+                q.exec(QStringLiteral("UPDATE systems SET libretro_name = 'Nintendo - Nintendo Entertainment System' "
+                                      "WHERE system_id = (SELECT system_id FROM games LIMIT 1)")));
             q.finish();
             const QString conn = db.connectionName();
             db.close();
@@ -199,13 +197,16 @@ private slots:
         genres.insert(QStringLiteral("1"), QJsonObject { { QStringLiteral("name"), QStringLiteral("Platform") } });
         igdb.insert(QStringLiteral("genres"), genres);
         QJsonObject screenshots;
-        screenshots.insert(QStringLiteral("1"), QJsonObject { { QStringLiteral("url"), QStringLiteral("//images.example/snap.jpg") } });
+        screenshots.insert(QStringLiteral("1"),
+            QJsonObject { { QStringLiteral("url"), QStringLiteral("//images.example/snap.jpg") } });
         igdb.insert(QStringLiteral("screenshots"), screenshots);
         QJsonObject artworks;
         artworks.insert(QStringLiteral("1"),
-            QJsonObject { { QStringLiteral("artwork_type"), 4 }, { QStringLiteral("url"), QStringLiteral("//images.example/hero.jpg") } });
+            QJsonObject { { QStringLiteral("artwork_type"), 4 },
+                { QStringLiteral("url"), QStringLiteral("//images.example/hero.jpg") } });
         artworks.insert(QStringLiteral("2"),
-            QJsonObject { { QStringLiteral("artwork_type"), 3 }, { QStringLiteral("url"), QStringLiteral("//images.example/banner.jpg") } });
+            QJsonObject { { QStringLiteral("artwork_type"), 3 },
+                { QStringLiteral("url"), QStringLiteral("//images.example/banner.jpg") } });
         igdb.insert(QStringLiteral("artworks"), artworks);
 
         const GameMetadata metadata = parseIgdbGameObject(igdb);
@@ -214,8 +215,8 @@ private slots:
         QVERIFY(metadata.rating > 8.0f);
         QCOMPARE(metadata.screenshotUrls.size(), 1);
         QVERIFY(metadata.screenshotUrls.first().startsWith(QStringLiteral("https:")));
-        QCOMPARE(metadata.externalIds.value(QStringLiteral("hero_url")),
-            QStringLiteral("https://images.example/hero.jpg"));
+        QCOMPARE(
+            metadata.externalIds.value(QStringLiteral("hero_url")), QStringLiteral("https://images.example/hero.jpg"));
         QCOMPARE(metadata.externalIds.value(QStringLiteral("banner_url")),
             QStringLiteral("https://images.example/banner.jpg"));
     }
@@ -238,9 +239,9 @@ private slots:
             QVERIFY(cat);
             QSqlDatabase db = std::move(*cat);
             QSqlQuery q(db);
-            QVERIFY(q.exec(QStringLiteral(
-                "UPDATE games SET cover_url = '', description = '', developer = NULL, publisher = NULL, "
-                "release_date = NULL, genre = NULL, rating = NULL")));
+            QVERIFY(q.exec(
+                QStringLiteral("UPDATE games SET cover_url = '', description = '', developer = NULL, publisher = NULL, "
+                               "release_date = NULL, genre = NULL, rating = NULL")));
             q.finish();
             const QString conn = db.connectionName();
             db.close();
@@ -250,6 +251,7 @@ private slots:
         qputenv("REMUSTWO_HASHEOUS_API_KEY", "test-key");
 
         int proxyCalls = 0;
+        int requestedIgdbId = -1;
         EnrichOptions options;
         options.online = true;
         options.deep = true;
@@ -262,7 +264,9 @@ private slots:
         };
         options.fetchIgdb = [&](int igdbId) {
             ++proxyCalls;
-            QCOMPARE(igdbId, 99);
+            // QCOMPARE returns void on failure, so it cannot be used inside a lambda
+            // that must return GameMetadata; record the argument and check it below.
+            requestedIgdbId = igdbId;
             GameMetadata metadata;
             metadata.genres = { QStringLiteral("Action") };
             metadata.rating = 8.5f;
@@ -275,6 +279,7 @@ private slots:
         qunsetenv("REMUSTWO_HASHEOUS_API_KEY");
         QVERIFY2(result, qPrintable(result.error()));
         QCOMPARE(proxyCalls, 1);
+        QCOMPARE(requestedIgdbId, 99);
         QCOMPARE(result->proxyFetched, 1);
         QCOMPARE(result->updated, 1);
 

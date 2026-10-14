@@ -44,7 +44,7 @@ namespace {
 
     QString discSetSubfolderName(Database &database, const FileRecord &fileRecord, const GameMetadata &metadata) {
         if (fileRecord.discSetKey.isEmpty())
-            return { };
+            return {};
 
         const QList<FileRecord> members = database.getFilesByDiscSetKey(fileRecord.discSetKey);
         int catalogDiscCount = 0;
@@ -69,7 +69,7 @@ namespace {
 
         const int effectiveDiscCount = catalogDiscCount >= 2 ? catalogDiscCount : members.size();
         if (effectiveDiscCount < 2)
-            return { };
+            return {};
 
         QString folderName = catalogBaseTitle;
         if (folderName.isEmpty() && !fileRecord.baseTitle.isEmpty())
@@ -184,7 +184,8 @@ OrganizeResult OrganizeEngine::organizeFile(
 
     if (overwriteExisting) {
         QFileInfo targetInfo(newPath);
-        backupPath = targetInfo.absoluteDir().filePath(QStringLiteral(".%1.remus_backup_%2")
+        backupPath = targetInfo.absoluteDir().filePath(
+            QStringLiteral(".%1.remus_backup_%2")
                 .arg(targetInfo.fileName(), QString::number(QDateTime::currentMSecsSinceEpoch())));
 
         if (!QFile::rename(newPath, backupPath)) {
@@ -198,7 +199,8 @@ OrganizeResult OrganizeEngine::organizeFile(
     bool operationSucceeded = false;
     if (overwriteExisting && operation == FileOperation::Copy) {
         QFileInfo targetInfo(newPath);
-        const QString stagedCopyPath = targetInfo.absoluteDir().filePath(QStringLiteral(".%1.remus_copy_%2")
+        const QString stagedCopyPath = targetInfo.absoluteDir().filePath(
+            QStringLiteral(".%1.remus_copy_%2")
                 .arg(targetInfo.fileName(), QString::number(QDateTime::currentMSecsSinceEpoch())));
 
         if (QFile::copy(result.oldPath, stagedCopyPath) && QFile::rename(stagedCopyPath, newPath)) {

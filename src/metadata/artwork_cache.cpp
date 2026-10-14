@@ -75,8 +75,7 @@ QString resolveArtworkPath(const QString &catalogDbPath, const QString &gameId, 
     if (catalogDbPath.trimmed().isEmpty() || gameId.trimmed().isEmpty())
         return {};
 
-    const QString connectionName
-        = QStringLiteral("artwork_cache_%1").arg(QDateTime::currentMSecsSinceEpoch());
+    const QString connectionName = QStringLiteral("artwork_cache_%1").arg(QDateTime::currentMSecsSinceEpoch());
     auto catalogResult = catalog::open(catalogDbPath, connectionName);
     if (!catalogResult)
         return {};
@@ -91,8 +90,8 @@ QString resolveArtworkPath(const QString &catalogDbPath, const QString &gameId, 
         coverUrl = query.value(0).toString().trimmed();
     if (coverUrl.isEmpty()) {
         QSqlQuery asset(catalog);
-        asset.prepare(QStringLiteral(
-            "SELECT url FROM game_assets WHERE game_id = ? AND asset_type = 'boxart' LIMIT 1"));
+        asset.prepare(
+            QStringLiteral("SELECT url FROM game_assets WHERE game_id = ? AND asset_type = 'boxart' LIMIT 1"));
         asset.addBindValue(gameId);
         if (asset.exec() && asset.next())
             coverUrl = asset.value(0).toString().trimmed();

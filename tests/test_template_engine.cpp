@@ -108,7 +108,7 @@ void TemplateEngineTest::testSubstitutionNoVariables() {
     TemplateEngine engine;
     GameMetadata metadata;
 
-    QString result = engine.applyTemplate("static_filename.rom", metadata, { });
+    QString result = engine.applyTemplate("static_filename.rom", metadata, {});
     QCOMPARE(result, QString("static_filename.rom"));
 }
 

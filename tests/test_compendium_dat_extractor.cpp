@@ -30,7 +30,7 @@ private:
             }
         }
 
-        return { };
+        return {};
     }
 
 private slots:
