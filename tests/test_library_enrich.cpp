@@ -251,6 +251,7 @@ private slots:
         qputenv("REMUSTWO_HASHEOUS_API_KEY", "test-key");
 
         int proxyCalls = 0;
+        int requestedIgdbId = -1;
         EnrichOptions options;
         options.online = true;
         options.deep = true;
@@ -263,7 +264,9 @@ private slots:
         };
         options.fetchIgdb = [&](int igdbId) {
             ++proxyCalls;
-            QCOMPARE(igdbId, 99);
+            // QCOMPARE returns void on failure, so it cannot be used inside a lambda
+            // that must return GameMetadata; record the argument and check it below.
+            requestedIgdbId = igdbId;
             GameMetadata metadata;
             metadata.genres = { QStringLiteral("Action") };
             metadata.rating = 8.5f;
@@ -276,6 +279,7 @@ private slots:
         qunsetenv("REMUSTWO_HASHEOUS_API_KEY");
         QVERIFY2(result, qPrintable(result.error()));
         QCOMPARE(proxyCalls, 1);
+        QCOMPARE(requestedIgdbId, 99);
         QCOMPARE(result->proxyFetched, 1);
         QCOMPARE(result->updated, 1);
 
